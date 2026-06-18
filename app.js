@@ -3416,7 +3416,9 @@ function initSectionResize(handleOrId, bodyOrId, storageKey){
     });
     document.addEventListener('mousemove', e=>{
       if(!dragging) return;
-      const newH = Math.max(80, startH+(e.clientY-startY));
+      // Cap at scrollHeight so KB can't expand past its content
+      const maxH = body.id==='kb-section-body' ? body.scrollHeight : 99999;
+      const newH = Math.min(maxH, Math.max(80, startH+(e.clientY-startY)));
       body.style.maxHeight='none'; body.style.height=newH+'px'; body.style.overflow='hidden auto';
     });
     document.addEventListener('mouseup', ()=>{
@@ -3549,10 +3551,10 @@ function renderMain(){
   if(pickerOpen)setTimeout(()=>document.addEventListener('click',closePicker,{once:true}),0);
   // Inject resize handles after DOM is set
   setTimeout(()=>{
-    ['top-drawer','kb-section-body'].forEach((bodyId,i)=>{
+    // Only KB and Map get resize handles — Test·Notes is fixed height
+    ['kb-section-body','map-section-body'].forEach((bodyId)=>{
       const body = document.getElementById(bodyId);
       if(!body) return;
-      // Remove any existing handle
       const existing = body.parentNode.querySelector('.section-resize[data-for="'+bodyId+'"]');
       if(existing) existing.remove();
       const handle = document.createElement('div');
