@@ -3565,11 +3565,12 @@ function addNew(type){
   S.personal.push(item);saveP();rerender();selectItem(id,'personal');
 }
 
-// Service worker registration
+// Service worker — unregister any old ones, don't cache
 if('serviceWorker' in navigator){
-  window.addEventListener('load',()=>{
-    navigator.serviceWorker.register('/sw.js').catch(()=>{});
+  navigator.serviceWorker.getRegistrations().then(regs=>{
+    regs.forEach(reg=>reg.unregister());
   });
+  caches.keys().then(keys=>keys.forEach(k=>caches.delete(k)));
 }
 
 // Resizable sidebar
