@@ -101,7 +101,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .content-col{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;background:#FFFFFF;height:100%;}
 .panel-label{padding:7px 12px;font-size:10px;font-weight:700;color:var(--ts-navy);text-transform:uppercase;letter-spacing:.08em;border-bottom:1.5px solid var(--border-mid);background:var(--bg-surface);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
 .panel-label-left{display:flex;align-items:center;gap:7px;}
-.main-scroll{overflow-y:auto;background:#FFFFFF;max-height:500px;}
+.main-scroll{overflow-y:auto;background:#FFFFFF;}
 
 /* ── Collapsible sections (drawer, map, knowledge base) ── */
 .section-header{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;background:var(--bg-surface);border-bottom:1.5px solid var(--border-mid);cursor:pointer;flex-shrink:0;user-select:none;}
