@@ -3352,7 +3352,20 @@ async function storage_get(key,shared=false){
 async function storage_set(key,val,shared=false){
   try{localStorage.setItem(key,val);}catch(e){}
 }
-async function saveP(){await storage_set(PK,JSON.stringify(S.personal));}
+async function saveP(){
+  try{await storage_set(PK,JSON.stringify(S.personal));}catch(e){}
+  try{
+    for(const item of S.personal){
+      const row={id:item.id,type:item.type,name:item.name,author:item.author||'Jarrett',
+        color:item.color,icon:item.icon,description:item.description||'',
+        prompt:item.prompt||'',notes:item.notes||'',archived:item.archived||false,
+        runs:item.runs||[],connected_skills:item.connectedSkills||[],
+        updated_at:new Date(item.updatedAt||Date.now()).toISOString()};
+      const r=await sbFetch('skills?id=eq.'+item.id,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify(row)});
+      if(r.status===404||r.status===204&&false) await sbFetch('skills',{method:'POST',body:JSON.stringify(row)});
+    }
+  }catch(e){console.warn('Supabase save:',e.message);}
+}
 async function saveSh(){await storage_set(SK,JSON.stringify(S.shared),true);}
 
 function setLib(l){} // Mine/Team removed — single library
