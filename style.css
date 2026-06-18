@@ -109,7 +109,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .section-title{font-size:10px;font-weight:700;color:var(--ts-navy);text-transform:uppercase;letter-spacing:.08em;display:flex;align-items:center;gap:7px;}
 .section-chevron{font-size:13px;color:var(--ts-navy);transition:transform .2s;}
 .section-chevron.open{transform:rotate(180deg);}
-.section-body{overflow:hidden;border-bottom:1.5px solid var(--border-mid);}
+.section-body{overflow:hidden;.section-body{overflow:hidden;}
 .section-body.expanded{display:flex;flex-direction:column;flex:1;min-height:0;overflow-y:auto;}
 .section-body.collapsed{display:none;border-bottom:none;flex:0;}
 /* map section also fills space */
