@@ -3497,12 +3497,17 @@ function renderMain(){
           </div>
         </div>
         ${historyPanel(item)}
+      </div>
+      <div class="section-resize" id="kb-resize"></div>
       </div>`;
   }
 
   const mapSection = buildMapSection(item);
   document.getElementById('content-area').innerHTML=`<div class="content-col" style="position:relative;">${pickerHTML}${mapSection}${drawer}${mainContent}</div>`;
   if(pickerOpen)setTimeout(()=>document.addEventListener('click',closePicker,{once:true}),0);
+  initSectionResize('drawer-resize','top-drawer','sb_drawer_h');
+  initSectionResize('kb-resize','kb-section-body','sb_kb_h');
+  if(typeof initMapResize==='function'&&typeof renderMapCanvas==='function') setTimeout(renderMapCanvas,50);
 }
 
 function openPicker(){pickerOpen=!pickerOpen;renderMain();}
