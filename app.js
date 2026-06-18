@@ -3378,7 +3378,7 @@ function buildMapSection(item){
       <div class="section-title"><i class="ti ti-map-2" style="font-size:12px"></i> Map</div>
       <i class="ti ti-chevron-up section-chevron ${isOpen?'open':''}" id="map-section-chevron"></i>
     </div>
-    <div id="${mapBodyId}" class="section-body ${isOpen?'expanded':'collapsed'}">
+    <div id="${mapBodyId}" class="section-body map-body ${isOpen?'expanded':'collapsed'}">
       <div id="map-canvas-wrap" class="map-canvas-wrap empty-state">
         <div class="map-empty-msg">Click a skill to add it to the active map</div>
         <div class="map-empty-hint">Select or create a map in the sidebar first</div>
