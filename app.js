@@ -3303,6 +3303,7 @@ let S={personal:[],shared:[],lib:'personal',type:'all',selected:null,selLib:null
 
 async function load(){
   loadFolders();
+  loadMaps();
   try{const r=await storage_get(PK);S.personal=r?JSON.parse(r):DEFAULT_PERSONAL;}catch(e){S.personal=DEFAULT_PERSONAL;}
   try{const r=await storage_get(SK,true);S.shared=r?JSON.parse(r):DEFAULT_SHARED;}catch(e){S.shared=DEFAULT_SHARED;}
   if(!S.personal.length)S.personal=DEFAULT_PERSONAL;
@@ -3320,15 +3321,15 @@ async function storage_set(key,val,shared=false){
 async function saveP(){await storage_set(PK,JSON.stringify(S.personal));}
 async function saveSh(){await storage_set(SK,JSON.stringify(S.shared),true);}
 
-function setLib(l){S.lib=l;S.selected=null;S.selLib=null;document.getElementById('tab-personal').classList.toggle('active',l==='personal');document.getElementById('tab-shared').classList.toggle('active',l==='shared');rerender();}
+function setLib(l){} // Mine/Team removed — single library
 function setType(t,btn){S.type=t;document.querySelectorAll('.type-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');rerender();}
-function getSrc(l){return l==='personal'?S.personal:S.shared;}
-function getFiltered(){const src=getSrc(S.lib),q=(document.getElementById('search')||{}).value||'';return src.filter(i=>!i.archived&&(S.type==='all'||i.type===S.type)&&(!q||i.name.toLowerCase().includes(q.toLowerCase())||(i.author||'').toLowerCase().includes(q.toLowerCase())));}
+function getSrc(l){return [...S.personal,...S.shared];}
+function getFiltered(){const src=getSrc('all'),q=(document.getElementById('search')||{}).value||'';return src.filter(i=>!i.archived&&(S.type==='all'||i.type===S.type)&&(!q||i.name.toLowerCase().includes(q.toLowerCase())||(i.author||'').toLowerCase().includes(q.toLowerCase())));}
 function toggleDrawer(){drawerOpen=!drawerOpen;const d=document.getElementById('top-drawer');const ch=document.getElementById('drawer-chevron');if(d)d.className='top-drawer '+(drawerOpen?'expanded':'collapsed');if(ch)ch.className='drawer-chevron ti ti-chevron-up '+(drawerOpen?'open':'');}
 
 function rerender(){
-  document.getElementById('cnt-personal').textContent=S.personal.filter(i=>!i.archived).length;
-  document.getElementById('cnt-shared').textContent=S.shared.filter(i=>!i.archived).length;
+  const totalCount = [...S.personal,...S.shared].filter(i=>!i.archived).length;
+  // counts now shown in type filter if needed
   const items=getFiltered(),list=document.getElementById('item-list');
   if(!list)return;
   if(!items.length){list.innerHTML='<div style="padding:16px 8px;font-size:12px;color:#5A6280;text-align:center;">No items found</div>';return;}
@@ -3362,9 +3363,29 @@ async function archiveItem(id,lib){
   if(S.selected===id){S.selected=null;S.selLib=null;}
   rerender();
 }
-function selectItem(id,lib){S.selected=id;S.selLib=lib;menuOpen=false;pickerOpen=false;rerender();renderMain();}
+function selectItem(id,lib){
+  S.selected=id;S.selLib=lib;menuOpen=false;pickerOpen=false;rerender();renderMain();
+  if(mapSectionOpen && activeMapId) addItemToMap(id);
+}
 function getSelected(){return getSrc(S.selLib||S.lib).find(i=>i.id===S.selected);}
 function getAllSkills(){return[...S.personal,...S.shared].filter(i=>i.type==='skill'&&!i.archived);}
+
+function buildMapSection(item){
+  const mapBodyId = 'map-section-body';
+  const isOpen = mapSectionOpen;
+  return `
+    <div class="section-header" onclick="toggleMapSection('${mapBodyId}')">
+      <div class="section-title"><i class="ti ti-map-2" style="font-size:12px"></i> Map</div>
+      <i class="ti ti-chevron-up section-chevron ${isOpen?'open':''}" id="map-section-chevron"></i>
+    </div>
+    <div id="${mapBodyId}" class="section-body ${isOpen?'expanded':'collapsed'}">
+      <div id="map-canvas-wrap" class="map-canvas-wrap empty-state">
+        <div class="map-empty-msg">Click a skill to add it to the active map</div>
+        <div class="map-empty-hint">Select or create a map in the sidebar first</div>
+      </div>
+    </div>`;
+}
+
 
 function renderMain(){
   const item=getSelected();if(!item)return;
@@ -3468,7 +3489,8 @@ function renderMain(){
       </div>`;
   }
 
-  document.getElementById('content-area').innerHTML=`<div class="content-col" style="position:relative;">${pickerHTML}${drawer}${mainContent}</div>`;
+  const mapSection = buildMapSection(item);
+  document.getElementById('content-area').innerHTML=`<div class="content-col" style="position:relative;">${pickerHTML}${mapSection}${drawer}${mainContent}</div>`;
   if(pickerOpen)setTimeout(()=>document.addEventListener('click',closePicker,{once:true}),0);
 }
 
