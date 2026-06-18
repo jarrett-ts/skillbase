@@ -3398,10 +3398,10 @@ function toggleKBSection(){
   if(chevron) chevron.classList.toggle('open', !isOpen);
 }
 
-function initSectionResize(handleId, bodyId, storageKey){
+function initSectionResize(handleOrId, bodyOrId, storageKey){
   setTimeout(()=>{
-    const handle = document.getElementById(handleId);
-    const body = document.getElementById(bodyId);
+    const handle = typeof handleOrId === 'string' ? document.getElementById(handleOrId) : handleOrId;
+    const body = typeof bodyOrId === 'string' ? document.getElementById(bodyOrId) : bodyOrId;
     if(!handle || !body) return;
     const saved = localStorage.getItem(storageKey);
     if(saved){ body.style.maxHeight='none'; body.style.height=saved+'px'; body.style.overflow='hidden auto'; }
@@ -3547,9 +3547,22 @@ function renderMain(){
   const mapSection = buildMapSection(item);
   document.getElementById('content-area').innerHTML=`<div class="content-col" style="position:relative;">${pickerHTML}${mapSection}${drawer}${mainContent}</div>`;
   if(pickerOpen)setTimeout(()=>document.addEventListener('click',closePicker,{once:true}),0);
-  initSectionResize('drawer-resize','top-drawer','sb_drawer_h');
-  initSectionResize('kb-resize','kb-section-body','sb_kb_h');
-  if(typeof initMapResize==='function'&&typeof renderMapCanvas==='function') setTimeout(renderMapCanvas,50);
+  // Inject resize handles after DOM is set
+  setTimeout(()=>{
+    ['top-drawer','kb-section-body'].forEach((bodyId,i)=>{
+      const body = document.getElementById(bodyId);
+      if(!body) return;
+      // Remove any existing handle
+      const existing = body.parentNode.querySelector('.section-resize[data-for="'+bodyId+'"]');
+      if(existing) existing.remove();
+      const handle = document.createElement('div');
+      handle.className = 'section-resize';
+      handle.dataset.for = bodyId;
+      handle.title = 'Drag to resize';
+      body.after(handle);
+      initSectionResize(handle, body, 'sb_resize_'+bodyId);
+    });
+  }, 50);
 }
 
 function openPicker(){pickerOpen=!pickerOpen;renderMain();}
