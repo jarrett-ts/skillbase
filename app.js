@@ -3451,41 +3451,38 @@ function toggleKBSection(){
   if(chevron) chevron.classList.toggle('open', !isOpen);
 }
 
-function initSectionResize(handleOrId, bodyOrId, storageKey){
+function initSectionResize(dividerIdOrEl, bodyIdOrEl, storageKey){
   setTimeout(()=>{
-    const handle = typeof handleOrId === 'string' ? document.getElementById(handleOrId) : handleOrId;
-    const body = typeof bodyOrId === 'string' ? document.getElementById(bodyOrId) : bodyOrId;
-    if(!handle || !body) return;
+    const divider = typeof dividerIdOrEl === 'string' ? document.getElementById(dividerIdOrEl) : dividerIdOrEl;
+    const body = typeof bodyIdOrEl === 'string' ? document.getElementById(bodyIdOrEl) : bodyIdOrEl;
+    if(!divider || !body) return;
     const saved = localStorage.getItem(storageKey);
     if(saved){ body.classList.add('user-sized'); body.style.flex='none'; body.style.height=saved+'px'; }
     let dragging=false, startY=0, startH=0;
-    handle.addEventListener('mousedown', e=>{
-      // Allow dragging even when collapsed — drag down to expand
-      if(body.classList.contains('collapsed')){
-        body.classList.remove('collapsed');
-        body.classList.add('expanded');
-        body.style.height='80px';
-        if(body.id==='map-section-body') { mapSectionOpen=true; setTimeout(renderMapCanvas,50); }
-      }
-      dragging=true; startY=e.clientY; startH=body.offsetHeight||80;
-      handle.classList.add('dragging');
+    divider.addEventListener('mousedown', e=>{
+      dragging=true; startY=e.clientY; startH=body.offsetHeight || 120;
+      divider.classList.add('dragging');
       document.body.style.cursor='ns-resize';
       document.body.style.userSelect='none';
       e.preventDefault();
     });
     document.addEventListener('mousemove', e=>{
       if(!dragging) return;
-      const newH = Math.max(80, startH+(e.clientY-startY));
+      const minH = (storageKey === 'sb_notes_height') ? 120 : 80;
+      const newH = Math.max(minH, startH + (e.clientY - startY));
       body.classList.add('user-sized');
-      body.style.flex='none'; body.style.height=newH+'px';
+      body.style.flex='none';
+      body.style.height=newH+'px';
     });
     document.addEventListener('mouseup', ()=>{
       if(!dragging) return;
-      dragging=false; handle.classList.remove('dragging');
-      document.body.style.cursor=''; document.body.style.userSelect='';
+      dragging=false;
+      divider.classList.remove('dragging');
+      document.body.style.cursor='';
+      document.body.style.userSelect='';
       try{ localStorage.setItem(storageKey, body.offsetHeight); }catch(e){}
     });
-  }, 150);
+  }, 50);
 }
 
 
@@ -3605,7 +3602,10 @@ function renderMain(){
   }
 
   const mapSection = buildMapSection(item);
-  document.getElementById('content-area').innerHTML=`<div class="content-col" style="position:relative;">${pickerHTML}${mapSection}${drawer}${mainContent}</div>`;
+  const divider1 = '<div class="section-divider" id="divider-map-notes"></div>';
+const divider2 = '<div class="section-divider" id="divider-notes-kb"></div>';
+document.getElementById('content-area').innerHTML=`<div class="content-col" style="position:relative;">${pickerHTML}${mapSection}${divider1}${drawer}${divider2}${mainContent}</div>`;
+setTimeout(() => { initSectionResize('divider-map-notes', 'map-section-body', 'sb_map_height'); initSectionResize('divider-notes-kb', 'drawer-id', 'sb_notes_height'); }, 50);
   if(pickerOpen)setTimeout(()=>document.addEventListener('click',closePicker,{once:true}),0);
   // Inject resize handles after DOM is set
   setTimeout(()=>{
