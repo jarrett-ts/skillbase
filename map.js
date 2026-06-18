@@ -116,9 +116,47 @@ function renderMapCanvas(){
     <div id="map-nodes-layer" style="position:absolute;top:0;left:0;width:100%;height:100%;"></div>
     ${isEmpty?'<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;"><div style="font-size:13px;color:var(--text-muted);">Click a skill in the sidebar to add it</div><div style="font-size:11px;color:var(--border-strong);margin-top:4px;">Then connect them by clicking Connect and dragging between nodes</div></div>':''}
   `;
+  // Add resize handle after canvas wrap
+  const resizeHandle = document.createElement('div');
+  resizeHandle.className = 'map-resize-handle';
+  resizeHandle.title = 'Drag to resize';
+  wrap.after(resizeHandle);
+  initMapResize(resizeHandle, wrap);
 
   renderNodes(map);
   renderEdges(map);
+}
+
+function initMapResize(handle, wrap){
+  let dragging = false, startY = 0, startH = 0;
+  handle.addEventListener('mousedown', e=>{
+    dragging = true;
+    startY = e.clientY;
+    startH = wrap.offsetHeight;
+    handle.classList.add('dragging');
+    document.body.style.cursor = 'ns-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', e=>{
+    if(!dragging) return;
+    const newH = Math.max(150, startH + (e.clientY - startY));
+    wrap.style.flex = 'none';
+    wrap.style.height = newH + 'px';
+  });
+  document.addEventListener('mouseup', ()=>{
+    if(!dragging) return;
+    dragging = false;
+    handle.classList.remove('dragging');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    try { localStorage.setItem('sb_map_height', wrap.offsetHeight); } catch(e){}
+  });
+  // Restore saved height
+  try {
+    const saved = localStorage.getItem('sb_map_height');
+    if(saved){ wrap.style.flex='none'; wrap.style.height=saved+'px'; }
+  } catch(e){}
 }
 
 function renderNodes(map){
