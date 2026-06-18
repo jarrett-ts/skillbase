@@ -3425,11 +3425,11 @@ function renderMain(){
 
 
   const drawer=`
-    <div class="drawer-header" onclick="toggleDrawer()">
-      <div class="drawer-title"><i class="ti ti-tools" style="font-size:12px"></i> Test · Notes</div>
-      <i class="ti ti-chevron-up drawer-chevron ${drawerOpen?'open':''}" id="drawer-chevron"></i>
+    <div class="section-header" onclick="toggleDrawer()">
+      <div class="section-title"><i class="ti ti-tools" style="font-size:12px"></i> Test · Notes</div>
+      <i class="ti ti-chevron-up section-chevron ${drawerOpen?'open':''}" id="drawer-chevron"></i>
     </div>
-    <div class="top-drawer ${drawerOpen?'expanded':'collapsed'}" id="top-drawer">
+    <div class="section-body ${drawerOpen?'expanded':'collapsed'}" id="top-drawer">
       <div class="drawer-body">
         <div class="drawer-section">
           <div class="drawer-section-label">Test input</div>
