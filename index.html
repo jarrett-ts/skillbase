@@ -169,6 +169,42 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .install-banner.show{display:flex;}
 .install-banner button{background:#FFFFFF;color:var(--ts-navy);border:none;border-radius:6px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer;}
 .install-banner .dismiss{background:none;color:rgba(255,255,255,.6);border:none;font-size:16px;cursor:pointer;padding:0 0 0 4px;line-height:1;}
+
+/* ── Drag & drop reorder ── */
+.item.dragging{opacity:.4;border:1.5px dashed var(--border-mid)!important;}
+.item.drag-over{border-top:2px solid var(--ts-navy)!important;}
+.item .drag-handle{display:none;cursor:grab;color:var(--text-muted);padding:0 4px;font-size:12px;flex-shrink:0;}
+.item:hover .drag-handle{display:flex;align-items:center;}
+
+/* ── Folders ── */
+.folder{margin-bottom:3px;}
+.folder-header{display:flex;align-items:center;gap:5px;padding:6px 8px 5px;border-radius:8px;cursor:pointer;user-select:none;border:1px solid transparent;transition:all .12s;}
+.folder-header:hover{background:var(--bg-panel);border-color:var(--border);}
+.folder-header.drag-over-folder{border:1.5px solid var(--ts-navy)!important;background:var(--ts-navy-pale)!important;}
+.folder-chevron{font-size:11px;color:var(--text-muted);transition:transform .15s;flex-shrink:0;}
+.folder-chevron.open{transform:rotate(90deg);}
+.folder-icon{font-size:13px;color:var(--text-muted);flex-shrink:0;}
+.folder-name{font-size:12px;font-weight:600;color:var(--text-secondary);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.folder-name-input{font-size:12px;font-weight:600;flex:1;background:transparent;border:none;border-bottom:1.5px solid var(--ts-navy-mid);outline:none;padding:0;color:var(--text-primary);}
+.folder-count{font-size:10px;color:var(--text-muted);background:var(--bg-hover);border:1px solid var(--border-mid);border-radius:99px;padding:1px 6px;}
+.folder-actions{display:none;gap:2px;}
+.folder-header:hover .folder-actions{display:flex;}
+.folder-items{padding-left:10px;border-left:1.5px solid var(--border);margin-left:11px;margin-bottom:2px;}
+.folder-items.collapsed{display:none;}
+.folder-drop-zone{height:28px;border:1.5px dashed var(--border-mid);border-radius:8px;display:none;align-items:center;justify-content:center;font-size:11px;color:var(--text-muted);margin-bottom:3px;}
+.folder-drop-zone.visible{display:flex;}
+
+/* ── Add folder button ── */
+.add-folder-btn{width:100%;padding:6px 10px;font-size:12px;font-weight:500;border-radius:8px;cursor:pointer;background:transparent;border:1.5px dashed var(--border-mid)!important;color:var(--text-muted);display:flex;align-items:center;justify-content:center;gap:5px;transition:all .12s;margin-bottom:4px;-webkit-appearance:none;}
+.add-folder-btn:hover{background:var(--bg-panel)!important;color:var(--ts-navy);border-color:var(--ts-navy-mid)!important;}
+
+/* context menu */
+.ctx-menu{position:fixed;background:#FFFFFF;border:1.5px solid var(--border-mid);border-radius:10px;padding:4px;min-width:160px;z-index:1000;box-shadow:0 4px 16px rgba(26,43,94,.14);}
+.ctx-item{display:flex;align-items:center;gap:8px;padding:7px 10px;font-size:13px;color:var(--text-primary);border-radius:7px;cursor:pointer;transition:all .1s;}
+.ctx-item:hover{background:var(--bg-surface);}
+.ctx-item.danger{color:#A32D2D;}
+.ctx-item.danger:hover{background:#FCEBEB;}
+.ctx-divider{border:none;border-top:1px solid var(--border);margin:3px 0;}
 </style>
 </head>
 <body>
@@ -197,6 +233,9 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
         <button class="type-btn" onclick="setType('skill',this)">Skills</button>
       </div>
       <div class="item-list" id="item-list"></div>
+      <div style="padding:4px 10px 0;">
+        <button class="add-folder-btn" onclick="addFolder()"><i class="ti ti-folder-plus" style="font-size:13px"></i> New folder</button>
+      </div>
       <div class="add-btns">
         <button class="add-btn" onclick="addNew('agent')"><i class="ti ti-plus" style="font-size:12px"></i> Agent</button>
         <button class="add-btn" onclick="addNew('skill')"><i class="ti ti-plus" style="font-size:12px"></i> Skill</button>
@@ -3527,6 +3566,7 @@ const DEFAULT_SHARED=[];
 let S={personal:[],shared:[],lib:'personal',type:'all',selected:null,selLib:null,renaming:null};
 
 async function load(){
+  loadFolders();
   try{const r=await storage_get(PK);S.personal=r?JSON.parse(r):DEFAULT_PERSONAL;}catch(e){S.personal=DEFAULT_PERSONAL;}
   try{const r=await storage_get(SK,true);S.shared=r?JSON.parse(r):DEFAULT_SHARED;}catch(e){S.shared=DEFAULT_SHARED;}
   if(!S.personal.length)S.personal=DEFAULT_PERSONAL;
@@ -3556,25 +3596,13 @@ function rerender(){
   const items=getFiltered(),list=document.getElementById('item-list');
   if(!list)return;
   if(!items.length){list.innerHTML='<div style="padding:16px 8px;font-size:12px;color:#5A6280;text-align:center;">No items found</div>';return;}
-  list.innerHTML=items.map(item=>{
-    const sel=S.selected===item.id?'selected':'';
-    const isRenaming=S.renaming===item.id;
-    return`<div class="item ${sel}" onclick="selectItem('${item.id}','${S.lib}')">
-      <div class="item-row">
-        ${iconEl(item.icon,item.color,11)}
-        ${isRenaming?`<input class="item-name-input" id="rename-${item.id}" value="${esc(item.name)}" onclick="event.stopPropagation()" onblur="finishRename('${item.id}')" onkeydown="if(event.key==='Enter')finishRename('${item.id}');if(event.key==='Escape'){S.renaming=null;rerender();}">`:`<span class="item-name">${esc(item.name)}</span>`}
-      </div>
-      <div class="item-meta">
-        <span class="badge b-${item.type}">${item.type}</span>
-        ${item.updatedAt?`<span>${timeAgo(item.updatedAt)}</span>`:''}
-      </div>
-      <div class="item-actions" onclick="event.stopPropagation()">
-        <button class="ia-btn" onclick="startRename('${item.id}')"><i class="ti ti-pencil"></i></button>
-        <button class="ia-btn danger" onclick="archiveItem('${item.id}','${S.lib}')"><i class="ti ti-archive"></i></button>
-      </div>
-    </div>`;
-  }).join('');
-  if(S.renaming){const el=document.getElementById('rename-'+S.renaming);if(el){el.focus();el.select();}}
+  // All tab gets folders + drag/drop; Agents/Skills get flat list
+  if(S.type==='all') {
+    renderAllTab(items);
+  } else {
+    list.innerHTML = items.map(item=>renderItem(item,false)).join('');
+    if(S.renaming){const el=document.getElementById('rename-'+S.renaming);if(el){el.focus();el.select();}}
+  }
   if(S.selected)renderMain();
   else{
     document.getElementById('topbar').innerHTML=`<div class="topbar-left"><button class="icon-btn" onclick="toggleSidebar()"><i class="ti ti-layout-sidebar"></i></button><span style="font-size:14px;color:var(--text-muted)">Select an item</span></div>`;
@@ -3819,6 +3847,276 @@ if('serviceWorker' in navigator){
   }catch(e){}
 })();
 
+
+// ── FOLDER & DRAG STATE ────────────────────────────────────────────────────
+// folders stored as: [{id, name, itemIds[], collapsed}]
+const FK = 'sb_folders_v1';
+let folders = [];
+let itemOrder = []; // ordered list of item ids at root level
+let dragState = null; // {type:'item'|'folder', id}
+let ctxMenu = null;
+
+function loadFolders() {
+  try { folders = JSON.parse(localStorage.getItem(FK) || '[]'); } catch(e) { folders = []; }
+  try { itemOrder = JSON.parse(localStorage.getItem('sb_item_order_v1') || '[]'); } catch(e) { itemOrder = []; }
+}
+function saveFolders() {
+  try {
+    localStorage.setItem(FK, JSON.stringify(folders));
+    localStorage.setItem('sb_item_order_v1', JSON.stringify(itemOrder));
+  } catch(e) {}
+}
+function getFolderById(id) { return folders.find(f=>f.id===id); }
+function allItems() { return [...S.personal, ...S.shared].filter(i=>!i.archived); }
+
+// ── FOLDER OPERATIONS ──────────────────────────────────────────────────────
+function addFolder() {
+  const name = prompt('Folder name:');
+  if(!name) return;
+  const id = 'f_'+Date.now();
+  folders.push({id, name, itemIds:[], collapsed:false});
+  saveFolders();
+  rerender();
+}
+
+function renameFolder(folderId) {
+  const f = getFolderById(folderId);
+  if(!f) return;
+  const name = prompt('Rename folder:', f.name);
+  if(name && name !== f.name) { f.name = name; saveFolders(); rerender(); }
+}
+
+function deleteFolder(folderId) {
+  const f = getFolderById(folderId);
+  if(!f || !confirm('Delete folder "'+f.name+'"? Items will move to root.')) return;
+  folders = folders.filter(x=>x.id!==folderId);
+  saveFolders();
+  rerender();
+}
+
+function toggleFolder(folderId) {
+  const f = getFolderById(folderId);
+  if(f) { f.collapsed = !f.collapsed; saveFolders(); rerender(); }
+}
+
+function moveItemToFolder(itemId, folderId) {
+  // Remove from all folders first
+  folders.forEach(f => { f.itemIds = f.itemIds.filter(id=>id!==itemId); });
+  // Remove from root order
+  itemOrder = itemOrder.filter(id=>id!==itemId);
+  if(folderId) {
+    const f = getFolderById(folderId);
+    if(f && !f.itemIds.includes(itemId)) f.itemIds.push(itemId);
+  } else {
+    itemOrder.push(itemId);
+  }
+  saveFolders();
+  rerender();
+}
+
+function getItemFolder(itemId) {
+  return folders.find(f=>f.itemIds.includes(itemId)) || null;
+}
+
+// ── CONTEXT MENU ──────────────────────────────────────────────────────────
+function showCtxMenu(e, itemId) {
+  e.preventDefault();
+  e.stopPropagation();
+  dismissCtxMenu();
+  const item = allItems().find(i=>i.id===itemId);
+  if(!item) return;
+  const currentFolder = getItemFolder(itemId);
+  const foldersAvail = folders.filter(f=>f.id!==(currentFolder&&currentFolder.id));
+  
+  const menu = document.createElement('div');
+  menu.className = 'ctx-menu';
+  menu.style.top = e.clientY+'px';
+  menu.style.left = e.clientX+'px';
+  menu.innerHTML = `
+    <div class="ctx-item" onclick="startRename('${itemId}');dismissCtxMenu()"><i class="ti ti-cursor-text" style="font-size:13px;color:var(--text-muted)"></i> Rename</div>
+    <hr class="ctx-divider">
+    ${foldersAvail.length ? foldersAvail.map(f=>`<div class="ctx-item" onclick="moveItemToFolder('${itemId}','${f.id}');dismissCtxMenu()"><i class="ti ti-folder" style="font-size:13px;color:var(--text-muted)"></i> Move to "${f.name}"</div>`).join('') : ''}
+    ${currentFolder ? `<div class="ctx-item" onclick="moveItemToFolder('${itemId}',null);dismissCtxMenu()"><i class="ti ti-folder-off" style="font-size:13px;color:var(--text-muted)"></i> Remove from folder</div>` : ''}
+    <hr class="ctx-divider">
+    <div class="ctx-item danger" onclick="archiveItem('${itemId}','${S.personal.find(x=>x.id===itemId)?'personal':'shared'}');dismissCtxMenu()"><i class="ti ti-archive" style="font-size:13px"></i> Archive</div>
+  `;
+  document.body.appendChild(menu);
+  ctxMenu = menu;
+  // Adjust if off screen
+  const rect = menu.getBoundingClientRect();
+  if(rect.right > window.innerWidth) menu.style.left = (window.innerWidth - rect.width - 8)+'px';
+  if(rect.bottom > window.innerHeight) menu.style.top = (e.clientY - rect.height)+'px';
+  setTimeout(()=>document.addEventListener('click', dismissCtxMenu, {once:true}), 0);
+}
+
+function dismissCtxMenu() {
+  if(ctxMenu) { ctxMenu.remove(); ctxMenu=null; }
+}
+
+// ── DRAG & DROP ────────────────────────────────────────────────────────────
+function onDragStart(e, itemId) {
+  dragState = {type:'item', id:itemId};
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', itemId);
+  setTimeout(()=>{
+    const el = document.querySelector('.item[data-id="'+itemId+'"]');
+    if(el) el.classList.add('dragging');
+  }, 0);
+}
+
+function onDragEnd(e) {
+  document.querySelectorAll('.dragging,.drag-over,.drag-over-folder').forEach(el=>{
+    el.classList.remove('dragging','drag-over','drag-over-folder');
+  });
+  dragState = null;
+}
+
+function onDragOver(e, targetItemId) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  document.querySelectorAll('.drag-over').forEach(el=>el.classList.remove('drag-over'));
+  const el = document.querySelector('.item[data-id="'+targetItemId+'"]');
+  if(el) el.classList.add('drag-over');
+}
+
+function onDropOnItem(e, targetItemId) {
+  e.preventDefault();
+  if(!dragState || dragState.id===targetItemId) return;
+  const srcId = dragState.id;
+  const srcFolder = getItemFolder(srcId);
+  const tgtFolder = getItemFolder(targetItemId);
+  
+  if(srcFolder && tgtFolder && srcFolder.id===tgtFolder.id) {
+    // Reorder within same folder
+    const arr = srcFolder.itemIds;
+    const fromIdx = arr.indexOf(srcId);
+    const toIdx = arr.indexOf(targetItemId);
+    arr.splice(fromIdx,1);
+    arr.splice(toIdx,0,srcId);
+  } else if(!srcFolder && !tgtFolder) {
+    // Reorder at root
+    ensureItemOrder();
+    const fromIdx = itemOrder.indexOf(srcId);
+    const toIdx = itemOrder.indexOf(targetItemId);
+    if(fromIdx>-1 && toIdx>-1) {
+      itemOrder.splice(fromIdx,1);
+      itemOrder.splice(toIdx,0,srcId);
+    }
+  } else {
+    // Move to target's folder (or root)
+    moveItemToFolder(srcId, tgtFolder ? tgtFolder.id : null);
+    return;
+  }
+  saveFolders();
+  rerender();
+}
+
+function onDragOverFolder(e, folderId) {
+  e.preventDefault();
+  document.querySelectorAll('.drag-over-folder').forEach(el=>el.classList.remove('drag-over-folder'));
+  const el = document.querySelector('.folder-header[data-folder-id="'+folderId+'"]');
+  if(el) el.classList.add('drag-over-folder');
+}
+
+function onDropOnFolder(e, folderId) {
+  e.preventDefault();
+  if(!dragState) return;
+  moveItemToFolder(dragState.id, folderId);
+}
+
+function ensureItemOrder() {
+  // Make sure all current items are represented in itemOrder
+  const allIds = getSrc(S.lib).filter(i=>!i.archived&&!getItemFolder(i.id)).map(i=>i.id);
+  allIds.forEach(id=>{ if(!itemOrder.includes(id)) itemOrder.push(id); });
+  itemOrder = itemOrder.filter(id=>allIds.includes(id));
+}
+
+// ── RENDER ALL TAB WITH FOLDERS ────────────────────────────────────────────
+function renderAllTab(items) {
+  const list = document.getElementById('item-list');
+  
+  // Items in folders
+  const inFolderIds = new Set(folders.flatMap(f=>f.itemIds));
+  const rootItems = items.filter(i=>!inFolderIds.has(i.id));
+  
+  // Ensure order
+  ensureItemOrder();
+  const rootOrdered = [...rootItems].sort((a,b)=>{
+    const ai = itemOrder.indexOf(a.id);
+    const bi = itemOrder.indexOf(b.id);
+    return (ai===-1?9999:ai) - (bi===-1?9999:bi);
+  });
+
+  let html = '';
+
+  // Render folders
+  folders.forEach(folder => {
+    const folderItems = folder.itemIds
+      .map(id=>items.find(i=>i.id===id))
+      .filter(Boolean);
+    
+    html += `
+      <div class="folder" data-folder-id="${folder.id}">
+        <div class="folder-header" data-folder-id="${folder.id}"
+          onclick="toggleFolder('${folder.id}')"
+          ondragover="onDragOverFolder(event,'${folder.id}')"
+          ondrop="onDropOnFolder(event,'${folder.id}')">
+          <i class="ti ti-chevron-right folder-chevron ${folder.collapsed?'':'open'}"></i>
+          <i class="ti ti-folder${folder.collapsed?'':'-open'} folder-icon" style="color:var(--ts-navy)"></i>
+          <span class="folder-name">${esc(folder.name)}</span>
+          <span class="folder-count">${folderItems.length}</span>
+          <div class="folder-actions" onclick="event.stopPropagation()">
+            <button class="ia-btn" onclick="renameFolder('${folder.id}')" title="Rename"><i class="ti ti-pencil"></i></button>
+            <button class="ia-btn danger" onclick="deleteFolder('${folder.id}')" title="Delete"><i class="ti ti-trash"></i></button>
+          </div>
+        </div>
+        <div class="folder-items ${folder.collapsed?'collapsed':''}">
+          ${folderItems.length ? folderItems.map(item=>renderItem(item,true)).join('') : '<div style="padding:6px 8px;font-size:11px;color:var(--text-muted);">Drop items here</div>'}
+        </div>
+      </div>`;
+  });
+
+  // Render root items
+  rootOrdered.forEach(item => { html += renderItem(item, false); });
+
+  list.innerHTML = html || '<div style="padding:16px 8px;font-size:12px;color:#5A6280;text-align:center;">No items found</div>';
+  
+  // Re-attach rename inputs
+  if(S.renaming) {
+    const el = document.getElementById('rename-'+S.renaming);
+    if(el) { el.focus(); el.select(); }
+  }
+}
+
+function renderItem(item, inFolder) {
+  const sel = S.selected===item.id ? 'selected' : '';
+  const isRenaming = S.renaming===item.id;
+  const lib = S.personal.find(x=>x.id===item.id) ? 'personal' : 'shared';
+  return `<div class="item ${sel}" data-id="${item.id}"
+    onclick="selectItem('${item.id}','${lib}')"
+    oncontextmenu="showCtxMenu(event,'${item.id}')"
+    draggable="true"
+    ondragstart="onDragStart(event,'${item.id}')"
+    ondragend="onDragEnd(event)"
+    ondragover="onDragOver(event,'${item.id}')"
+    ondrop="onDropOnItem(event,'${item.id}')">
+    <div class="item-row">
+      <i class="ti ti-grip-vertical drag-handle"></i>
+      ${iconEl(item.icon,item.color,11)}
+      ${isRenaming
+        ?`<input class="item-name-input" id="rename-${item.id}" value="${esc(item.name)}" onclick="event.stopPropagation()" onblur="finishRename('${item.id}')" onkeydown="if(event.key==='Enter')finishRename('${item.id}');if(event.key==='Escape'){S.renaming=null;rerender();}">`
+        :`<span class="item-name">${esc(item.name)}</span>`}
+    </div>
+    <div class="item-meta">
+      <span class="badge b-${item.type}">${item.type}</span>
+      ${item.updatedAt?`<span>${timeAgo(item.updatedAt)}</span>`:''}
+    </div>
+    <div class="item-actions" onclick="event.stopPropagation()">
+      <button class="ia-btn" onclick="startRename('${item.id}')"><i class="ti ti-pencil"></i></button>
+      <button class="ia-btn danger" onclick="archiveItem('${item.id}','${lib}')"><i class="ti ti-archive"></i></button>
+    </div>
+  </div>`;
+}
 
 load();
 </script>
