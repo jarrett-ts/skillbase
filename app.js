@@ -3372,7 +3372,7 @@ function getAllSkills(){return[...S.personal,...S.shared].filter(i=>i.type==='sk
 
 function buildMapSection(item){
   const mapBodyId = 'map-section-body';
-  mapSectionOpen = (mapSectionOpen !== false); const isOpen = mapSectionOpen;
+  if(mapSectionOpen === null || mapSectionOpen === undefined) mapSectionOpen = true; const isOpen = mapSectionOpen;
   return `
     <div class="section-header" onclick="toggleMapSection('${mapBodyId}')">
       <div class="section-title"><i class="ti ti-map-2" style="font-size:12px"></i> Map</div>
@@ -3393,6 +3393,10 @@ function toggleKBSection(){
   const isOpen = el.classList.contains('expanded');
   el.classList.remove('expanded','collapsed');
   el.classList.add(isOpen ? 'collapsed' : 'expanded');
+  if(!isOpen){
+    // Reset to natural height when opening
+    el.style.height=''; el.style.maxHeight='';
+  }
   localStorage.setItem('sb_kb_open', isOpen ? '0' : '1');
   const chevron = document.getElementById('kb-chevron');
   if(chevron) chevron.classList.toggle('open', !isOpen);
@@ -3407,8 +3411,14 @@ function initSectionResize(handleOrId, bodyOrId, storageKey){
     if(saved){ body.style.maxHeight='none'; body.style.height=saved+'px'; body.style.overflow='hidden auto'; }
     let dragging=false, startY=0, startH=0;
     handle.addEventListener('mousedown', e=>{
-      if(!body.classList.contains('expanded')) return;
-      dragging=true; startY=e.clientY; startH=body.offsetHeight;
+      // Allow dragging even when collapsed — drag down to expand
+      if(body.classList.contains('collapsed')){
+        body.classList.remove('collapsed');
+        body.classList.add('expanded');
+        body.style.height='80px';
+        if(body.id==='map-section-body') { mapSectionOpen=true; setTimeout(renderMapCanvas,50); }
+      }
+      dragging=true; startY=e.clientY; startH=body.offsetHeight||80;
       handle.classList.add('dragging');
       document.body.style.cursor='ns-resize';
       document.body.style.userSelect='none';
@@ -3416,9 +3426,7 @@ function initSectionResize(handleOrId, bodyOrId, storageKey){
     });
     document.addEventListener('mousemove', e=>{
       if(!dragging) return;
-      // Cap at scrollHeight so KB can't expand past its content
-      const maxH = body.id==='kb-section-body' ? body.scrollHeight : 99999;
-      const newH = Math.min(maxH, Math.max(80, startH+(e.clientY-startY)));
+      const newH = Math.max(80, startH+(e.clientY-startY));
       body.style.maxHeight='none'; body.style.height=newH+'px'; body.style.overflow='hidden auto';
     });
     document.addEventListener('mouseup', ()=>{
