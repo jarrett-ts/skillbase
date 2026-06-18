@@ -280,9 +280,10 @@ function removeNodeFromMap(nodeId){
 function toggleMapSection(bodyId){
   const el = document.getElementById(bodyId);
   if(!el) return;
-  mapSectionOpen = el.classList.toggle('collapsed') ? false : true;
-  // actually let's check directly
-  mapSectionOpen = !el.classList.contains('collapsed');
+  const isOpen = el.classList.contains('expanded');
+  el.classList.remove('expanded','collapsed');
+  el.classList.add(isOpen ? 'collapsed' : 'expanded');
+  mapSectionOpen = !isOpen;
   const chevron = el.previousElementSibling && el.previousElementSibling.querySelector('.section-chevron');
   if(chevron) chevron.classList.toggle('open', mapSectionOpen);
   if(mapSectionOpen) renderMapCanvas();
