@@ -3426,7 +3426,7 @@ function renderMain(){
 
   const drawer=`
     <div class="drawer-header" onclick="toggleDrawer()">
-      <div class="drawer-title"><i class="ti ti-tools" style="font-size:12px"></i> Test · Notes · History</div>
+      <div class="drawer-title"><i class="ti ti-tools" style="font-size:12px"></i> Test · Notes</div>
       <i class="ti ti-chevron-up drawer-chevron ${drawerOpen?'open':''}" id="drawer-chevron"></i>
     </div>
     <div class="top-drawer ${drawerOpen?'expanded':'collapsed'}" id="top-drawer">
@@ -3446,11 +3446,16 @@ function renderMain(){
 
   let mainContent='';
   if(item.type==='skill'){
+    const kbOpen = localStorage.getItem('sb_kb_open') !== '0';
     mainContent=`
-      <div class="panel-label">
-        <div class="panel-label-left"><i class="ti ti-books" style="font-size:13px;color:#0E6E5C"></i> Skill knowledge base</div>
-        <div class="author-chip"><div class="avatar">${initials(item.author||'Me')}</div>${esc(item.author||'You')}</div>
+      <div class="section-header" onclick="toggleKBSection()">
+        <div class="section-title"><i class="ti ti-books" style="font-size:12px;color:#0E6E5C"></i> Skill knowledge base</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="author-chip"><div class="avatar">${initials(item.author||'Me')}</div>${esc(item.author||'You')}</div>
+          <i class="ti ti-chevron-up section-chevron ${kbOpen?'open':''}" id="kb-chevron"></i>
+        </div>
       </div>
+      <div id="kb-section-body" class="section-body ${kbOpen?'expanded':'collapsed'}">
       <div class="main-scroll">
         <div class="skill-desc-block">
           <div class="skill-desc-name">${esc(item.name)}</div>
@@ -3462,17 +3467,23 @@ function renderMain(){
           <div><div class="meta-label">Updated</div><div class="meta-value">${fullDate(item.updatedAt)}</div></div>
         </div>
         ${historyPanel(item)}
+      </div>
       </div>`;
   } else {
     const connectedIds=item.connectedSkills||[];
     const allSkills=getAllSkills();
     const connected=allSkills.filter(s=>connectedIds.includes(s.id));
     const unconnected=allSkills.filter(s=>!connectedIds.includes(s.id));
+    const kbOpen = localStorage.getItem('sb_kb_open') !== '0';
     mainContent=`
-      <div class="panel-label">
-        <div class="panel-label-left"><i class="ti ti-code" style="font-size:13px;color:#4A2080"></i> System prompt</div>
-        <div class="author-chip"><div class="avatar">${initials(item.author||'Me')}</div>${esc(item.author||'You')}</div>
+      <div class="section-header" onclick="toggleKBSection()">
+        <div class="section-title"><i class="ti ti-code" style="font-size:12px;color:#4A2080"></i> System prompt</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="author-chip"><div class="avatar">${initials(item.author||'Me')}</div>${esc(item.author||'You')}</div>
+          <i class="ti ti-chevron-up section-chevron ${kbOpen?'open':''}" id="kb-chevron"></i>
+        </div>
       </div>
+      <div id="kb-section-body" class="section-body ${kbOpen?'expanded':'collapsed'}">
       <div class="main-scroll">
         <div class="prompt-text">${esc(item.prompt)}</div>
         <div class="skills-section">
