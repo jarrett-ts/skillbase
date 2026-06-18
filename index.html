@@ -29,9 +29,12 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 }
 #app{display:flex;height:100vh;overflow:hidden;}
 .sidebar{flex-shrink:0;background:#DCE0EA;border-right:1.5px solid var(--border-mid);display:flex;flex-direction:column;overflow:hidden;transition:width .2s ease;}
-.sidebar.expanded{width:240px;}
+.sidebar.expanded{width:var(--sidebar-w,240px);min-width:180px;max-width:380px;}
 .sidebar.collapsed{width:0;border-right:none;}
-.sidebar-inner{width:240px;min-width:240px;display:flex;flex-direction:column;height:100%;}
+.sidebar-inner{width:100%;min-width:180px;display:flex;flex-direction:column;height:100%;}
+.resize-handle{position:absolute;right:-4px;top:0;width:8px;height:100%;cursor:col-resize;z-index:10;display:flex;align-items:center;justify-content:center;}
+.resize-handle::after{content:'';display:block;width:2px;height:40px;background:var(--border-mid);border-radius:2px;opacity:0;transition:opacity .15s;}
+.resize-handle:hover::after,.resize-handle.dragging::after{opacity:1;}
 .sbar-top{padding:14px 12px 8px;}
 .sbar-top h2{font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;}
 .search-wrap input{width:100%;padding:7px 10px;font-size:13px;border-radius:8px;background:#FFFFFF!important;border:1.5px solid var(--border-mid);color:var(--text-primary);outline:none;font-weight:500;}
@@ -170,8 +173,8 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 </head>
 <body>
 <div id="app">
-  <div class="sidebar expanded" id="sidebar">
-    <div class="sidebar-inner">
+  <div class="sidebar expanded" id="sidebar" style="position:relative;">
+    <div class="resize-handle" id="resize-handle"></div><div class="sidebar-inner">
       <div class="sbar-top">
         <h2>Library</h2>
         <div class="search-wrap">
@@ -3779,6 +3782,43 @@ if('serviceWorker' in navigator){
     navigator.serviceWorker.register('/sw.js').catch(()=>{});
   });
 }
+
+// Resizable sidebar
+(function(){
+  const handle = document.getElementById('resize-handle');
+  const sidebar = document.getElementById('sidebar');
+  if(!handle||!sidebar) return;
+  let dragging=false, startX=0, startW=0;
+  handle.addEventListener('mousedown', e=>{
+    dragging=true; startX=e.clientX;
+    startW=sidebar.offsetWidth;
+    handle.classList.add('dragging');
+    document.body.style.cursor='col-resize';
+    document.body.style.userSelect='none';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', e=>{
+    if(!dragging) return;
+    const newW = Math.min(380, Math.max(180, startW+(e.clientX-startX)));
+    sidebar.style.setProperty('--sidebar-w', newW+'px');
+    sidebar.style.width = newW+'px';
+  });
+  document.addEventListener('mouseup', ()=>{
+    if(!dragging) return;
+    dragging=false;
+    handle.classList.remove('dragging');
+    document.body.style.cursor='';
+    document.body.style.userSelect='';
+    // persist width
+    try{ localStorage.setItem('sb_sidebar_w', sidebar.offsetWidth); }catch(e){}
+  });
+  // restore saved width
+  try{
+    const saved = localStorage.getItem('sb_sidebar_w');
+    if(saved){ sidebar.style.width=saved+'px'; }
+  }catch(e){}
+})();
+
 
 load();
 </script>
