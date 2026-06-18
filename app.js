@@ -3394,8 +3394,10 @@ function toggleKBSection(){
   el.classList.remove('expanded','collapsed');
   el.classList.add(isOpen ? 'collapsed' : 'expanded');
   if(!isOpen){
-    // Reset to natural height when opening
-    el.style.height=''; el.style.maxHeight='';
+    // Reset to natural flex fill when opening (unless user-sized)
+    if(!el.classList.contains('user-sized')){
+      el.style.flex=''; el.style.height='';
+    }
   }
   localStorage.setItem('sb_kb_open', isOpen ? '0' : '1');
   const chevron = document.getElementById('kb-chevron');
@@ -3408,7 +3410,7 @@ function initSectionResize(handleOrId, bodyOrId, storageKey){
     const body = typeof bodyOrId === 'string' ? document.getElementById(bodyOrId) : bodyOrId;
     if(!handle || !body) return;
     const saved = localStorage.getItem(storageKey);
-    if(saved){ body.style.maxHeight='none'; body.style.height=saved+'px'; body.style.overflow='hidden auto'; }
+    if(saved){ body.classList.add('user-sized'); body.style.flex='none'; body.style.height=saved+'px'; }
     let dragging=false, startY=0, startH=0;
     handle.addEventListener('mousedown', e=>{
       // Allow dragging even when collapsed — drag down to expand
@@ -3427,7 +3429,8 @@ function initSectionResize(handleOrId, bodyOrId, storageKey){
     document.addEventListener('mousemove', e=>{
       if(!dragging) return;
       const newH = Math.max(80, startH+(e.clientY-startY));
-      body.style.maxHeight='none'; body.style.height=newH+'px'; body.style.overflow='hidden auto';
+      body.classList.add('user-sized');
+      body.style.flex='none'; body.style.height=newH+'px';
     });
     document.addEventListener('mouseup', ()=>{
       if(!dragging) return;
