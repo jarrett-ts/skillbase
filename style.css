@@ -261,3 +261,9 @@ canvas#map-canvas{position:absolute;top:0;left:0;width:100%;height:100%;}
 .install-banner.show{display:flex;}
 .install-banner button{background:#FFFFFF;color:var(--ts-navy);border:none;border-radius:6px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer;}
 .install-banner .dismiss{background:none;color:rgba(255,255,255,.6);border:none;font-size:16px;cursor:pointer;padding:0 0 0 4px;line-height:1;}
+
+/* ── Section resize handles ── */
+.section-resize{height:6px;background:var(--bg-surface);border-top:1.5px solid var(--border-mid);cursor:ns-resize;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:background .12s;}
+.section-resize::after{content:'';width:32px;height:2px;background:var(--border-mid);border-radius:2px;transition:background .12s;}
+.section-resize:hover,.section-resize.dragging{background:var(--bg-hover);}
+.section-resize:hover::after,.section-resize.dragging::after{background:var(--ts-navy-mid);}
