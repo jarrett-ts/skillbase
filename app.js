@@ -1,4 +1,15 @@
 const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages';
+const SB_URL = 'https://zjruwkdmvpgfpyxpnffj.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpqcnV3a2RtdnBnZnB5eHBuZmZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4MDg5NjksImV4cCI6MjA5NzM4NDk2OX0.jlQkFpYtkh497qFWkG03tJZGQ-5R_bWx4QxwRUNEO1E';
+
+async function sbFetch(path, opts={}) {
+  const r = await fetch(SB_URL+'/rest/v1/'+path, {
+    ...opts,
+    headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer '+SB_KEY,
+      'Content-Type': 'application/json', 'Prefer': 'return=minimal', ...(opts.headers||{}) }
+  });
+  return r;
+}
 const PK='sb_personal_v1';const SK='sb_shared_v1';
 const COLORS={navy:'#1E3570',teal:'#0E6E5C',purple:'#4A2080',coral:'#C44A20',amber:'#B87800',gray:'#4A5060',blue:'#2952A3',pink:'#982060'};
 const ICONS=['ti-puzzle','ti-bolt','ti-brain','ti-chart-bar','ti-edit','ti-file','ti-folder','ti-star','ti-microphone','ti-video','ti-camera','ti-list','ti-wand','ti-robot','ti-sparkles','ti-target'];
@@ -3304,9 +3315,32 @@ let S={personal:[],shared:[],lib:'personal',type:'all',selected:null,selLib:null
 async function load(){
   loadFolders();
   if(typeof loadMaps === 'function') loadMaps();
-  try{const r=await storage_get(PK);S.personal=r?JSON.parse(r):DEFAULT_PERSONAL;}catch(e){S.personal=DEFAULT_PERSONAL;}
-  try{const r=await storage_get(SK,true);S.shared=r?JSON.parse(r):DEFAULT_SHARED;}catch(e){S.shared=DEFAULT_SHARED;}
-  if(!S.personal||!S.personal.length)S.personal=DEFAULT_PERSONAL;
+  try {
+    const r = await sbFetch('skills?archived=eq.false&order=name');
+    if(r.ok) {
+      const data = await r.json();
+      if(data.length) {
+        S.personal = data.map(row=>mkItem({
+          id:row.id, type:row.type, name:row.name, author:row.author,
+          color:row.color, icon:row.icon, description:row.description,
+          prompt:row.prompt, notes:row.notes, archived:row.archived,
+          runs:row.runs||[], connectedSkills:row.connected_skills||[],
+          updatedAt: new Date(row.updated_at).getTime()
+        }));
+        S.shared = [];
+        console.log('Loaded '+S.personal.length+' skills from Supabase');
+      } else {
+        // Empty DB — seed with defaults
+        S.personal = DEFAULT_PERSONAL;
+        await saveP();
+      }
+    } else { throw new Error('Supabase error '+r.status); }
+  } catch(e) {
+    console.warn('Supabase unavailable, using localStorage:', e.message);
+    try{const r=await storage_get(PK);S.personal=r?JSON.parse(r):DEFAULT_PERSONAL;}catch(e2){S.personal=DEFAULT_PERSONAL;}
+    try{const r=await storage_get(SK,true);S.shared=r?JSON.parse(r):DEFAULT_SHARED;}catch(e2){S.shared=DEFAULT_SHARED;}
+    if(!S.personal||!S.personal.length)S.personal=DEFAULT_PERSONAL;
+  }
   rerender();
   if(S.personal.length)selectItem(S.personal[0].id,'personal');
 }
