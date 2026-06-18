@@ -3640,6 +3640,7 @@ function renderMain(){
       <div class="menu-wrap">
         <button class="icon-btn" onclick="toggleMenu()"><i class="ti ti-adjustments-horizontal"></i></button>
         <div class="menu-dropdown" id="action-menu">
+          <button class="menu-item" onclick="openInClaude();closeMenu()"><i class="ti ti-message" style="font-size:14px;color:#5A6280"></i> Open in Claude</button>
           <button class="menu-item" onclick="editItem();closeMenu()"><i class="ti ti-pencil" style="font-size:14px;color:#5A6280"></i> Edit prompt</button>
           ${isPersonal?`<button class="menu-item" onclick="publishToTeam();closeMenu()"><i class="ti ti-arrow-up" style="font-size:14px;color:#5A6280"></i> Publish to team</button>`:''}
           <hr class="menu-divider">
@@ -4117,6 +4118,13 @@ function renderItem(item, inFolder) {
     </div>
   </div>`;
 }
+function openInClaude(){
+  const item=getSelected();
+  if(!item)return;
+  const msg = 'I want to use the "'+item.name+'" '+item.type+'.\n\nHere is the full skill prompt — please use this as your instructions:\n\n'+item.prompt+'\n\n---\n\nReady when you are. Paste your input and I will process it.';
+  window.open('https://claude.ai/new?q='+encodeURIComponent(msg),'_blank');
+}
+
 
 load();
 </script>
