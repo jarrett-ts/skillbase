@@ -3372,7 +3372,7 @@ function getAllSkills(){return[...S.personal,...S.shared].filter(i=>i.type==='sk
 
 function buildMapSection(item){
   const mapBodyId = 'map-section-body';
-  const isOpen = mapSectionOpen !== undefined ? mapSectionOpen : true; mapSectionOpen = isOpen;
+  mapSectionOpen = (mapSectionOpen !== false); const isOpen = mapSectionOpen;
   return `
     <div class="section-header" onclick="toggleMapSection('${mapBodyId}')">
       <div class="section-title"><i class="ti ti-map-2" style="font-size:12px"></i> Map</div>
@@ -3384,6 +3384,48 @@ function buildMapSection(item){
         <div class="map-empty-hint">Select or create a map in the sidebar first</div>
       </div>
     </div>`;
+}
+
+
+function toggleKBSection(){
+  const el = document.getElementById('kb-section-body');
+  if(!el) return;
+  const isOpen = el.classList.contains('expanded');
+  el.classList.remove('expanded','collapsed');
+  el.classList.add(isOpen ? 'collapsed' : 'expanded');
+  localStorage.setItem('sb_kb_open', isOpen ? '0' : '1');
+  const chevron = document.getElementById('kb-chevron');
+  if(chevron) chevron.classList.toggle('open', !isOpen);
+}
+
+function initSectionResize(handleId, bodyId, storageKey){
+  setTimeout(()=>{
+    const handle = document.getElementById(handleId);
+    const body = document.getElementById(bodyId);
+    if(!handle || !body) return;
+    const saved = localStorage.getItem(storageKey);
+    if(saved){ body.style.maxHeight='none'; body.style.height=saved+'px'; body.style.overflow='hidden auto'; }
+    let dragging=false, startY=0, startH=0;
+    handle.addEventListener('mousedown', e=>{
+      if(!body.classList.contains('expanded')) return;
+      dragging=true; startY=e.clientY; startH=body.offsetHeight;
+      handle.classList.add('dragging');
+      document.body.style.cursor='ns-resize';
+      document.body.style.userSelect='none';
+      e.preventDefault();
+    });
+    document.addEventListener('mousemove', e=>{
+      if(!dragging) return;
+      const newH = Math.max(80, startH+(e.clientY-startY));
+      body.style.maxHeight='none'; body.style.height=newH+'px'; body.style.overflow='hidden auto';
+    });
+    document.addEventListener('mouseup', ()=>{
+      if(!dragging) return;
+      dragging=false; handle.classList.remove('dragging');
+      document.body.style.cursor=''; document.body.style.userSelect='';
+      try{ localStorage.setItem(storageKey, body.offsetHeight); }catch(e){}
+    });
+  }, 150);
 }
 
 
@@ -3446,7 +3488,7 @@ function renderMain(){
 
   let mainContent='';
   if(item.type==='skill'){
-    const kbOpen = localStorage.getItem('sb_kb_open') !== '0';
+    const kbOpen = localStorage.getItem('sb_kb_open') !== '0'; // defaults to open
     mainContent=`
       <div class="section-header" onclick="toggleKBSection()">
         <div class="section-title"><i class="ti ti-books" style="font-size:12px;color:#0E6E5C"></i> Skill knowledge base</div>
@@ -3474,7 +3516,7 @@ function renderMain(){
     const allSkills=getAllSkills();
     const connected=allSkills.filter(s=>connectedIds.includes(s.id));
     const unconnected=allSkills.filter(s=>!connectedIds.includes(s.id));
-    const kbOpen = localStorage.getItem('sb_kb_open') !== '0';
+    const kbOpen = localStorage.getItem('sb_kb_open') !== '0'; // defaults to open
     mainContent=`
       <div class="section-header" onclick="toggleKBSection()">
         <div class="section-title"><i class="ti ti-code" style="font-size:12px;color:#4A2080"></i> System prompt</div>
