@@ -3325,7 +3325,7 @@ function setLib(l){} // Mine/Team removed — single library
 function setType(t,btn){S.type=t;document.querySelectorAll('.type-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');rerender();}
 function getSrc(l){return [...S.personal,...S.shared];}
 function getFiltered(){const src=getSrc('all'),q=(document.getElementById('search')||{}).value||'';return src.filter(i=>!i.archived&&(S.type==='all'||i.type===S.type)&&(!q||i.name.toLowerCase().includes(q.toLowerCase())||(i.author||'').toLowerCase().includes(q.toLowerCase())));}
-function toggleDrawer(){drawerOpen=!drawerOpen;const d=document.getElementById('top-drawer');const ch=document.getElementById('drawer-chevron');if(d)d.className='top-drawer '+(drawerOpen?'expanded':'collapsed');if(ch)ch.className='drawer-chevron ti ti-chevron-up '+(drawerOpen?'open':'');}
+function toggleDrawer(){drawerOpen=!drawerOpen;const d=document.getElementById('top-drawer');const ch=document.getElementById('drawer-chevron');if(d)d.className='section-body '+(drawerOpen?'expanded':'collapsed');if(ch)ch.classList.toggle('open',drawerOpen);}
 
 function rerender(){
   const totalCount = [...S.personal,...S.shared].filter(i=>!i.archived).length;
@@ -3372,7 +3372,7 @@ function getAllSkills(){return[...S.personal,...S.shared].filter(i=>i.type==='sk
 
 function buildMapSection(item){
   const mapBodyId = 'map-section-body';
-  const isOpen = mapSectionOpen;
+  const isOpen = mapSectionOpen !== undefined ? mapSectionOpen : true; mapSectionOpen = isOpen;
   return `
     <div class="section-header" onclick="toggleMapSection('${mapBodyId}')">
       <div class="section-title"><i class="ti ti-map-2" style="font-size:12px"></i> Map</div>
