@@ -3306,17 +3306,17 @@ async function load(){
   loadMaps();
   try{const r=await storage_get(PK);S.personal=r?JSON.parse(r):DEFAULT_PERSONAL;}catch(e){S.personal=DEFAULT_PERSONAL;}
   try{const r=await storage_get(SK,true);S.shared=r?JSON.parse(r):DEFAULT_SHARED;}catch(e){S.shared=DEFAULT_SHARED;}
-  if(!S.personal.length)S.personal=DEFAULT_PERSONAL;
+  if(!S.personal||!S.personal.length)S.personal=DEFAULT_PERSONAL;
   rerender();
   if(S.personal.length)selectItem(S.personal[0].id,'personal');
 }
 
 // localStorage-based storage (works in deployed app)
 async function storage_get(key,shared=false){
-  try{return localStorage.getItem((shared?'sb_shared_':'sb_personal_')+key);}catch(e){return null;}
+  try{return localStorage.getItem(key);}catch(e){return null;}
 }
 async function storage_set(key,val,shared=false){
-  try{localStorage.setItem((shared?'sb_shared_':'sb_personal_')+key,val);}catch(e){}
+  try{localStorage.setItem(key,val);}catch(e){}
 }
 async function saveP(){await storage_set(PK,JSON.stringify(S.personal));}
 async function saveSh(){await storage_set(SK,JSON.stringify(S.shared),true);}
