@@ -3451,38 +3451,50 @@ function toggleKBSection(){
   if(chevron) chevron.classList.toggle('open', !isOpen);
 }
 
-function initSectionResize(dividerIdOrEl, bodyIdOrEl, storageKey){
-  setTimeout(()=>{
-    const divider = typeof dividerIdOrEl === 'string' ? document.getElementById(dividerIdOrEl) : dividerIdOrEl;
-    const body = typeof bodyIdOrEl === 'string' ? document.getElementById(bodyIdOrEl) : bodyIdOrEl;
-    if(!divider || !body) return;
-    const saved = localStorage.getItem(storageKey);
-    if(saved){ body.classList.add('user-sized'); body.style.flex='none'; body.style.height=saved+'px'; }
-    let dragging=false, startY=0, startH=0;
-    divider.addEventListener('mousedown', e=>{
-      dragging=true; startY=e.clientY; startH=body.offsetHeight || 120;
-      divider.classList.add('dragging');
-      document.body.style.cursor='ns-resize';
-      document.body.style.userSelect='none';
-      e.preventDefault();
-    });
-    document.addEventListener('mousemove', e=>{
-      if(!dragging) return;
-      const minH = (storageKey === 'sb_notes_height') ? 120 : 80;
-      const newH = Math.max(minH, startH + (e.clientY - startY));
-      body.classList.add('user-sized');
-      body.style.flex='none';
-      body.style.height=newH+'px';
-    });
-    document.addEventListener('mouseup', ()=>{
-      if(!dragging) return;
-      dragging=false;
-      divider.classList.remove('dragging');
-      document.body.style.cursor='';
-      document.body.style.userSelect='';
-      try{ localStorage.setItem(storageKey, body.offsetHeight); }catch(e){}
-    });
-  }, 50);
+function initSectionResize(e, bodyId, storageKey){
+  const body = document.getElementById(bodyId);
+  if(!body || body.classList.contains('collapsed')) return;
+  const divider = e.currentTarget;
+  const startY = e.clientY;
+  const startH = body.offsetHeight;
+  const minH = (storageKey === 'sb_notes_height') ? 120 : 80;
+  let dragging = true;
+  divider.classList.add('dragging');
+  document.body.style.cursor = 'ns-resize';
+  document.body.style.userSelect = 'none';
+  e.preventDefault();
+  const handleMove = (moveE) => {
+    if(!dragging) return;
+    const deltaY = moveE.clientY - startY;
+    const newH = Math.max(minH, startH + deltaY);
+    body.classList.add('user-sized');
+    body.style.flex = 'none';
+    body.style.height = newH + 'px';
+  };
+  const handleUp = () => {
+    dragging = false;
+    divider.classList.remove('dragging');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    try{ localStorage.setItem(storageKey, body.offsetHeight); }catch(e){}
+    document.removeEventListener('mousemove', handleMove);
+    document.removeEventListener('mouseup', handleUp);
+  };
+  document.addEventListener('mousemove', handleMove);
+  document.addEventListener('mouseup', handleUp);
+}
+function toggleSectionCollapse(bodyId, chevronId){
+  const body = document.getElementById(bodyId);
+  const chevron = document.getElementById(chevronId);
+  if(!body || !chevron) return;
+  const isCollapsed = body.classList.contains('collapsed');
+  if(isCollapsed){
+    body.classList.remove('collapsed');
+    chevron.classList.remove('collapsed');
+  } else {
+    body.classList.add('collapsed');
+    chevron.classList.add('collapsed');
+  }
 }
 
 
@@ -3602,10 +3614,10 @@ function renderMain(){
   }
 
   const mapSection = buildMapSection(item);
-  const divider1 = '<div class="section-divider" id="divider-map-notes"></div>';
-const divider2 = '<div class="section-divider" id="divider-notes-kb"></div>';
-document.getElementById('content-area').innerHTML=`<div class="content-col" style="position:relative;">${pickerHTML}${mapSection}${divider1}${drawer}${divider2}${mainContent}</div>`;
-setTimeout(() => { initSectionResize('divider-map-notes', 'map-section-body', 'sb_map_height'); initSectionResize('divider-notes-kb', 'drawer-id', 'sb_notes_height'); }, 50);
+  const divider1 = '<div class="section-divider" id="divider1" onmousedown="initSectionResize(event, \'map-section-body\', \'sb_map_height\')"><div class="divider-content"><div class="divider-grip"></div><i class="divider-chevron ti ti-chevron-up" id="map-chevron" onclick="toggleSectionCollapse(\'map-section-body\', \'map-chevron\'); event.stopPropagation();"></i></div></div>';
+const divider2 = '<div class="section-divider" id="divider2" onmousedown="initSectionResize(event, \'drawer-id\', \'sb_notes_height\')"><div class="divider-content"><div class="divider-grip"></div><i class="divider-chevron ti ti-chevron-up" id="notes-chevron" onclick="toggleSectionCollapse(\'drawer-id\', \'notes-chevron\'); event.stopPropagation();"></i></div></div>';
+const divider3 = '<div class="section-divider" id="divider3" onmousedown="initSectionResize(event, \'kb-section-body\', \'sb_kb_height\')"><div class="divider-content"><div class="divider-grip"></div><i class="divider-chevron ti ti-chevron-up" id="kb-chevron" onclick="toggleSectionCollapse(\'kb-section-body\', \'kb-chevron\'); event.stopPropagation();"></i></div></div>';
+document.getElementById('content-area').innerHTML=`<div class="content-col" style="position:relative;">${pickerHTML}${mapSection}${divider1}${drawer}${divider2}${mainContent}${divider3}</div>`;
   if(pickerOpen)setTimeout(()=>document.addEventListener('click',closePicker,{once:true}),0);
   // Inject resize handles after DOM is set
   setTimeout(()=>{
