@@ -3303,7 +3303,7 @@ let S={personal:[],shared:[],lib:'personal',type:'all',selected:null,selLib:null
 
 async function load(){
   loadFolders();
-  loadMaps();
+  if(typeof loadMaps === 'function') loadMaps();
   try{const r=await storage_get(PK);S.personal=r?JSON.parse(r):DEFAULT_PERSONAL;}catch(e){S.personal=DEFAULT_PERSONAL;}
   try{const r=await storage_get(SK,true);S.shared=r?JSON.parse(r):DEFAULT_SHARED;}catch(e){S.shared=DEFAULT_SHARED;}
   if(!S.personal||!S.personal.length)S.personal=DEFAULT_PERSONAL;
