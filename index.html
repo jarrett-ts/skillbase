@@ -15,25 +15,15 @@
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-
 <div id="app">
   <div class="sidebar expanded" id="sidebar" style="position:relative;">
-    <div class="resize-handle" id="resize-handle"></div><div class="sidebar-inner">
+    <div class="resize-handle" id="resize-handle"></div>
+    <div class="sidebar-inner">
       <div class="sbar-top">
         <h2>Library</h2>
         <div class="search-wrap">
           <input type="text" id="search" placeholder="Search…" oninput="rerender()">
         </div>
-      </div>
-      <div class="lib-tabs">
-        <button class="lib-tab active" id="tab-personal" onclick="setLib('personal')">
-          <i class="ti ti-user" style="font-size:12px"></i> Mine
-          <span class="count-pill" id="cnt-personal">0</span>
-        </button>
-        <button class="lib-tab" id="tab-shared" onclick="setLib('shared')">
-          <i class="ti ti-users" style="font-size:12px"></i> Team
-          <span class="count-pill" id="cnt-shared">0</span>
-        </button>
       </div>
       <div class="type-filter">
         <button class="type-btn active" onclick="setType('all',this)">All</button>
@@ -41,6 +31,16 @@
         <button class="type-btn" onclick="setType('skill',this)">Skills</button>
       </div>
       <div class="item-list" id="item-list"></div>
+
+      <!-- Maps section -->
+      <div class="maps-section">
+        <div class="maps-section-header">
+          <span class="maps-section-title">Maps</span>
+          <button class="map-new-btn" onclick="newMap()"><i class="ti ti-plus" style="font-size:11px"></i> New</button>
+        </div>
+        <div class="map-list" id="map-list"></div>
+      </div>
+
       <div style="padding:4px 10px 0;">
         <button class="add-folder-btn" onclick="addFolder()"><i class="ti ti-folder-plus" style="font-size:13px"></i> New folder</button>
       </div>
@@ -50,6 +50,7 @@
       </div>
     </div>
   </div>
+
   <div class="main">
     <div class="topbar" id="topbar">
       <div class="topbar-left">
@@ -69,7 +70,7 @@
   <button class="dismiss" onclick="document.getElementById('install-banner').classList.remove('show')">×</button>
 </div>
 
-
 <script src="/app.js"></script>
+<script src="/map.js"></script>
 </body>
 </html>
