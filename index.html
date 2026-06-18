@@ -205,6 +205,14 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .ctx-item.danger{color:#A32D2D;}
 .ctx-item.danger:hover{background:#FCEBEB;}
 .ctx-divider{border:none;border-top:1px solid var(--border);margin:3px 0;}
+
+/* run history panel at bottom */
+.history-panel{border-top:1.5px solid var(--border-mid);}
+.history-panel-header{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;background:var(--bg-surface);cursor:pointer;user-select:none;}
+.history-panel-header:hover{background:var(--bg-hover);}
+.history-panel-title{font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;display:flex;align-items:center;gap:7px;}
+.history-panel-body{padding:8px 14px 12px;background:var(--bg-panel);}
+.history-panel-body.collapsed{display:none;}
 </style>
 </head>
 <body>
@@ -3666,13 +3674,6 @@ function renderMain(){
       <div class="icon-row">${ICONS.map(ic=>`<div class="icon-opt${item.icon===ic?' active':''}" onclick="setIcon('${ic}')"><i class="ti ${ic}"></i></div>`).join('')}</div>
     </div>`:'';
 
-  const runHistory=item.runs&&item.runs.length
-    ?[...item.runs].reverse().slice(0,5).map((r,i)=>`
-      <div class="history-item">
-        <div class="h-row"><span class="badge b-${r.ok?'ok':'fail'}" style="font-size:9px;">${r.ok?'ok':'err'}</span><span class="h-time">${r.time}</span></div>
-        <div class="h-preview">${esc(r.input)}</div>
-      </div>`).join('')
-    :`<div class="empty-sm">No runs yet</div>`;
 
   const drawer=`
     <div class="drawer-header" onclick="toggleDrawer()">
@@ -3690,10 +3691,6 @@ function renderMain(){
           <div class="drawer-section-label">Notes</div>
           <textarea id="notes-input" placeholder="Scratchpad…">${esc(item.notes||'')}</textarea>
           <button class="notes-save" onclick="saveNotes()"><i class="ti ti-device-floppy"></i> Save notes</button>
-        </div>
-        <div class="drawer-section">
-          <div class="drawer-section-label">Run history</div>
-          <div class="history-list">${runHistory}</div>
         </div>
       </div>
     </div>`;
@@ -3715,6 +3712,7 @@ function renderMain(){
           <div><div class="meta-label">Author</div><div class="meta-value">${esc(item.author||'You')}</div></div>
           <div><div class="meta-label">Updated</div><div class="meta-value">${fullDate(item.updatedAt)}</div></div>
         </div>
+        ${historyPanel(item)}
       </div>`;
   } else {
     const connectedIds=item.connectedSkills||[];
@@ -3738,6 +3736,7 @@ function renderMain(){
             ${unconnected.length?`<div class="add-skill-chip" onclick="addSkillPrompt()"><i class="ti ti-plus" style="font-size:12px"></i> Connect skill</div>`:''}
           </div>
         </div>
+        ${historyPanel(item)}
       </div>`;
   }
 
@@ -4118,6 +4117,41 @@ function renderItem(item, inFolder) {
     </div>
   </div>`;
 }
+function historyPanel(item) {
+  const runs = item.runs || [];
+  const historyId = 'history-panel-'+item.id;
+  const bodyId = 'history-body-'+item.id;
+  const isOpen = localStorage.getItem('sb_history_open') === '1';
+  const chevronClass = isOpen ? 'open' : '';
+  const bodyClass = isOpen ? '' : 'collapsed';
+  const runHtml = runs.length
+    ? [...runs].reverse().slice(0,10).map(r=>`
+        <div class="history-item" style="padding:6px 0;border-bottom:1px solid var(--border);">
+          <div class="h-row"><span class="badge b-${r.ok?'ok':'fail'}" style="font-size:9px;">${r.ok?'ok':'err'}</span><span class="h-time">${r.time}</span></div>
+          <div class="h-preview">${esc(r.input)}</div>
+        </div>`).join('')
+    : '<div class="empty-sm" style="padding:8px 0;">No runs yet</div>';
+  return `
+    <div class="history-panel">
+      <div class="history-panel-header" onclick="toggleHistoryPanel('${bodyId}')">
+        <div class="history-panel-title"><i class="ti ti-history" style="font-size:12px"></i> Run history <span class="count-pill">${runs.length}</span></div>
+        <i class="ti ti-chevron-up drawer-chevron ${chevronClass}" style="font-size:13px;color:var(--text-muted);transition:transform .2s;"></i>
+      </div>
+      <div id="${bodyId}" class="history-panel-body ${bodyClass}">${runHtml}</div>
+    </div>`;
+}
+
+function toggleHistoryPanel(bodyId) {
+  const el = document.getElementById(bodyId);
+  if(!el) return;
+  const isCollapsed = el.classList.toggle('collapsed');
+  localStorage.setItem('sb_history_open', isCollapsed ? '0' : '1');
+  // flip chevron
+  const chevron = el.previousElementSibling && el.previousElementSibling.querySelector('.drawer-chevron');
+  if(chevron) chevron.classList.toggle('open', !isCollapsed);
+}
+
+
 function openInClaude(){
   const item=getSelected();
   if(!item)return;
