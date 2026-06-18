@@ -109,7 +109,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .section-title{font-size:10px;font-weight:700;color:var(--ts-navy);text-transform:uppercase;letter-spacing:.08em;display:flex;align-items:center;gap:7px;}
 .section-chevron{font-size:13px;color:var(--ts-navy);transition:transform .2s;}
 .section-chevron.open{transform:rotate(180deg);}
-.section-body{overflow:hidden;.section-body{overflow:hidden;}
+.section-body{overflow:hidden;.section-body{overflow:hidden;border-bottom:0.5px solid var(--color-border-tertiary);transition:all 0.2s;}.section-body.collapsed{display:none;}
 .section-body.expanded{display:flex;flex-direction:column;flex:1;min-height:0;overflow-y:auto;}
 .section-body.collapsed{display:none;border-bottom:none;flex:0;}
 /* map section also fills space */
@@ -277,3 +277,14 @@ canvas#map-canvas{position:absolute;top:0;left:0;width:100%;height:100%;}
 .section-divider::after{content:'';width:32px;height:2px;background:var(--border-mid);border-radius:2px;}
 .section-divider.dragging{background:var(--bg-hover);}
 .section-divider.dragging::after{background:var(--ts-navy-mid);}
+
+
+/* ── Section dividers (draggable + collapsible) ── */
+.section-divider{height:8px;background:var(--color-background-secondary);cursor:ns-resize;display:flex;align-items:center;justify-content:center;flex-shrink:0;user-select:none;transition:background 0.12s;position:relative;}
+.section-divider:hover{background:var(--color-background-tertiary);}
+.divider-content{display:flex;align-items:center;gap:8px;}
+.divider-grip{width:28px;height:2px;background:var(--color-border-secondary);border-radius:2px;}
+.divider-chevron{font-size:14px;cursor:pointer;padding:0 4px;display:flex;align-items:center;color:var(--color-text-secondary);transition:transform 0.2s;}
+.divider-chevron:hover{color:var(--color-text-primary);}
+.divider-chevron.collapsed{transform:rotate(180deg);}
+.section-divider.dragging{background:var(--color-background-tertiary);}
