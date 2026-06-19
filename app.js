@@ -3451,51 +3451,8 @@ function toggleKBSection(){
   if(chevron) chevron.classList.toggle('open', !isOpen);
 }
 
-function initSectionResize(e, bodyId, storageKey){
-  const body = document.getElementById(bodyId);
-  if(!body || body.classList.contains('collapsed')) return;
-  const divider = e.currentTarget;
-  const startY = e.clientY;
-  const startH = body.offsetHeight;
-  const minH = (storageKey === 'sb_notes_height') ? 120 : 80;
-  let dragging = true;
-  divider.classList.add('dragging');
-  document.body.style.cursor = 'ns-resize';
-  document.body.style.userSelect = 'none';
-  e.preventDefault();
-  const handleMove = (moveE) => {
-    if(!dragging) return;
-    const deltaY = moveE.clientY - startY;
-    const newH = Math.max(minH, startH + deltaY);
-    body.classList.add('user-sized');
-    body.style.flex = 'none';
-    body.style.height = newH + 'px';
-  };
-  const handleUp = () => {
-    dragging = false;
-    divider.classList.remove('dragging');
-    document.body.style.cursor = '';
-    document.body.style.userSelect = '';
-    try{ localStorage.setItem(storageKey, body.offsetHeight); }catch(e){}
-    document.removeEventListener('mousemove', handleMove);
-    document.removeEventListener('mouseup', handleUp);
-  };
-  document.addEventListener('mousemove', handleMove);
-  document.addEventListener('mouseup', handleUp);
-}
-function toggleSectionCollapse(bodyId, chevronId){
-  const body = document.getElementById(bodyId);
-  const chevron = document.getElementById(chevronId);
-  if(!body || !chevron) return;
-  const isCollapsed = body.classList.contains('collapsed');
-  if(isCollapsed){
-    body.classList.remove('collapsed');
-    chevron.classList.remove('collapsed');
-  } else {
-    body.classList.add('collapsed');
-    chevron.classList.add('collapsed');
-  }
-}
+
+
 
 
 function renderMain(){
@@ -4055,3 +4012,42 @@ function openInClaude(){
 
 
 load();
+
+
+function toggleMainSection(sectionType){
+  const mapSection = document.getElementById('mapSection');
+  const skillsSection = document.getElementById('skillsSection');
+  const mapBtn = document.getElementById('btn-map');
+  const skillsBtn = document.getElementById('btn-skills');
+  
+  if(sectionType === 'map'){
+    mapSection.classList.add('active');
+    skillsSection.classList.remove('active');
+    mapBtn.classList.add('active');
+    skillsBtn.classList.remove('active');
+  } else if(sectionType === 'skills'){
+    skillsSection.classList.add('active');
+    mapSection.classList.remove('active');
+    skillsBtn.classList.add('active');
+    mapBtn.classList.remove('active');
+  }
+}
+
+function toggleTestNotesCollapse(){
+  const testSection = document.getElementById('testNotesSection');
+  const testBody = document.getElementById('testNotesBody');
+  const chevron = document.getElementById('testChevron');
+  
+  const isCollapsed = testSection.classList.contains('collapsed');
+  if(isCollapsed){
+    testSection.classList.remove('collapsed');
+    testSection.classList.add('expanded');
+    testBody.style.display = 'flex';
+    chevron.classList.remove('collapsed');
+  } else {
+    testSection.classList.add('collapsed');
+    testSection.classList.remove('expanded');
+    testBody.style.display = 'none';
+    chevron.classList.add('collapsed');
+  }
+}
