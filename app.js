@@ -3576,7 +3576,6 @@ function renderMain(){
 const divider2 = '<div class="section-divider" id="divider2" onmousedown="initSectionResize(event, \'drawer-id\', \'sb_notes_height\')"><div class="divider-content"><div class="divider-grip"></div><i class="divider-chevron ti ti-chevron-up" id="notes-chevron" onclick="toggleSectionCollapse(\'drawer-id\', \'notes-chevron\'); event.stopPropagation();"></i></div></div>';
 const divider3 = '<div class="section-divider" id="divider3" onmousedown="initSectionResize(event, \'kb-section-body\', \'sb_kb_height\')"><div class="divider-content"><div class="divider-grip"></div><i class="divider-chevron ti ti-chevron-up" id="kb-chevron" onclick="toggleSectionCollapse(\'kb-section-body\', \'kb-chevron\'); event.stopPropagation();"></i></div></div>';
 document.getElementById('content-area').innerHTML=`<div class="content-col" style="position:relative;">${pickerHTML}${mapSection}${divider1}${drawer}${divider2}${mainContent}${divider3}</div>`;
-  if(pickerOpen)
   if(pickerOpen)setTimeout(()=>document.addEventListener('click',closePicker,{once:true}),0);
   // Inject resize handles after DOM is set
   setTimeout(()=>{
