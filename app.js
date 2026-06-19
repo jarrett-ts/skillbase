@@ -3492,6 +3492,9 @@ function renderMain(){
   const mainContent=window.currentViewMode==='skills'?skillsHTML:mapHTML;
   document.getElementById('content-area').innerHTML=`<div style="position:relative;display:flex;flex-direction:column;height:100%;">${pickerHTML}${topButtons}<div style="flex:1;overflow-y:auto;min-height:0;">${mainContent}</div>${testHTML}</div>`;
   if(pickerOpen)setTimeout(()=>document.addEventListener('click',closePicker,{once:true}),0);
+  if(!window.currentViewMode||window.currentViewMode==='map'){
+    setTimeout(()=>{if(typeof renderMapCanvas==='function')renderMapCanvas();},50);
+  }
 }
 
 
