@@ -307,3 +307,13 @@ canvas#map-canvas{position:absolute;top:0;left:0;width:100%;height:100%;}
 .test-field textarea{padding:8px;border:0.5px solid var(--color-border-tertiary);border-radius:4px;font-family:inherit;font-size:12px;resize:none;flex:1;min-height:40px;}
 .chevron-icon{font-size:14px;transition:transform 0.2s;color:var(--color-text-secondary);}
 .chevron-icon.collapsed{transform:rotate(180deg);}
+
+/* ── Simplified Layout: Hide dividers ── */
+.section-divider{display:none;}
+.divider-content{display:none;}
+.divider-chevron{display:none;}
+
+/* Make sections take full space */
+.section-body.expanded{flex:1;min-height:0;}
+.section-body.collapsed{display:none;flex:0;}
+.main-scroll{height:100%;overflow-y:auto;}
