@@ -3455,6 +3455,17 @@ function toggleKBSection(){
 
 
 
+
+function switchViewMode(mode) {
+  viewMode = mode;
+  renderMain();
+}
+
+function toggleTestNotesSection() {
+  testNotesCollapsed = !testNotesCollapsed;
+  renderMain();
+}
+
 function renderMain(){
   const item=getSelected();if(!item)return;
   const isPersonal=S.selLib==='personal';
@@ -3571,10 +3582,38 @@ function renderMain(){
   }
 
   const mapSection = buildMapSection(item);
-  const divider1 = '<div class="section-divider" id="divider1" onmousedown="initSectionResize(event, \'map-section-body\', \'sb_map_height\')"><div class="divider-content"><div class="divider-grip"></div><i class="divider-chevron ti ti-chevron-up" id="map-chevron" onclick="toggleSectionCollapse(\'map-section-body\', \'map-chevron\'); event.stopPropagation();"></i></div></div>';
-const divider2 = '<div class="section-divider" id="divider2" onmousedown="initSectionResize(event, \'drawer-id\', \'sb_notes_height\')"><div class="divider-content"><div class="divider-grip"></div><i class="divider-chevron ti ti-chevron-up" id="notes-chevron" onclick="toggleSectionCollapse(\'drawer-id\', \'notes-chevron\'); event.stopPropagation();"></i></div></div>';
-const divider3 = '<div class="section-divider" id="divider3" onmousedown="initSectionResize(event, \'kb-section-body\', \'sb_kb_height\')"><div class="divider-content"><div class="divider-grip"></div><i class="divider-chevron ti ti-chevron-up" id="kb-chevron" onclick="toggleSectionCollapse(\'kb-section-body\', \'kb-chevron\'); event.stopPropagation();"></i></div></div>';
-document.getElementById('content-area').innerHTML=`<div class="content-col" style="position:relative;">${pickerHTML}${mapSection}${divider1}${drawer}${divider2}${mainContent}${divider3}</div>`;
+  // Simplified layout: MAP vs SKILLS toggle, TEST always at bottom
+const topBar = `
+  <div style="display:flex;gap:8px;margin-bottom:12px;">
+    <button onclick="switchViewMode('map')" style="padding:6px 12px;background:${viewMode==='map'?'var(--color-primary)':'var(--color-background-tertiary)'};color:${viewMode==='map'?'white':'var(--color-text-secondary)'};border:0.5px solid ${viewMode==='map'?'var(--color-primary)':'var(--color-border-secondary)'};border-radius:4px;cursor:pointer;font-size:12px;font-weight:500;">📍 MAP</button>
+    <button onclick="switchViewMode('skills')" style="padding:6px 12px;background:${viewMode==='skills'?'var(--color-primary)':'var(--color-background-tertiary)'};color:${viewMode==='skills'?'white':'var(--color-text-secondary)'};border:0.5px solid ${viewMode==='skills'?'var(--color-primary)':'var(--color-border-secondary)'};border-radius:4px;cursor:pointer;font-size:12px;font-weight:500;">📚 SKILLS</button>
+  </div>`;
+
+const mainContent_simplified = viewMode === 'map' ? mapSection : mainContent;
+const testNotesDisplay = testNotesCollapsed ? 'none' : 'flex';
+const testChevron = testNotesCollapsed ? '▶' : '▼';
+
+const testNotesHtml = `
+  <div style="margin-top:12px;background:white;border:0.5px solid var(--color-border-tertiary);border-radius:4px;display:flex;flex-direction:column;${testNotesCollapsed?'min-height:40px;':'min-height:140px;'}">
+    <div onclick="toggleTestNotesSection()" style="padding:8px 12px;background:var(--color-background-secondary);border-bottom:${testNotesCollapsed?'none':'0.5px solid var(--color-border-tertiary)'};cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-weight:500;font-size:13px;">
+      <span>TEST - NOTES</span>
+      <span>${testChevron}</span>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:${testNotesCollapsed?'0':'12px'};display:${testNotesDisplay};flex-direction:column;gap:12px;">
+      <div style="display:flex;flex-direction:column;gap:4px;flex:1;">
+        <label style="font-size:12px;font-weight:500;color:var(--color-text-secondary);">Run Test</label>
+        <textarea id="test-input" placeholder="Paste a sample input…" style="padding:8px;border:0.5px solid var(--color-border-tertiary);border-radius:4px;font-family:inherit;font-size:12px;resize:none;min-height:40px;"></textarea>
+        <button class="run-btn" id="run-btn" onclick="runTest()" style="padding:6px 12px;background:var(--color-primary);color:white;border:none;border-radius:4px;cursor:pointer;font-size:12px;margin-top:6px;"><i class="ti ti-player-play"></i> Run test</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;flex:1;">
+        <label style="font-size:12px;font-weight:500;color:var(--color-text-secondary);">Thoughts on Skill / Map</label>
+        <textarea id="notes-input" placeholder="Jot down thoughts…" style="padding:8px;border:0.5px solid var(--color-border-tertiary);border-radius:4px;font-family:inherit;font-size:12px;resize:none;min-height:60px;">${esc(item.notes||'')}</textarea>
+        <button class="notes-save" onclick="saveNotes()" style="padding:6px 12px;background:var(--color-primary);color:white;border:none;border-radius:4px;cursor:pointer;font-size:12px;margin-top:6px;"><i class="ti ti-device-floppy"></i> Save notes</button>
+      </div>
+    </div>
+  </div>`;
+
+document.getElementById('content-area').innerHTML=`<div class="content-col" style="position:relative;">${pickerHTML}${topBar}<div style="flex:1;overflow-y:auto;">${mainContent_simplified}${testNotesHtml}</div></div>`;
   if(pickerOpen)setTimeout(()=>document.addEventListener('click',closePicker,{once:true}),0);
   // Inject resize handles after DOM is set
   setTimeout(()=>{
