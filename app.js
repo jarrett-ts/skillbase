@@ -31,7 +31,7 @@ function esc(t){return(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace
 function timeAgo(ts){if(!ts)return'';const d=Math.floor((Date.now()-ts)/1000);if(d<60)return'just now';if(d<3600)return Math.floor(d/60)+'m ago';if(d<86400)return Math.floor(d/3600)+'h ago';return Math.floor(d/86400)+'d ago';}
 function initials(n){return(n||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();}
 function fullDate(ts){return ts?new Date(ts).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'-';}
-function toggleSidebar(){sidebarOpen=!sidebarOpen;document.getElementById('sidebar').className='sidebar '+(sidebarOpen?'expanded':'collapsed');}
+function toggleSidebar(){sidebarOpen=!sidebarOpen;const sb=document.getElementById('sidebar');sb.className='sidebar '+(sidebarOpen?'expanded':'collapsed');if(sidebarOpen){let w=240;try{const s=localStorage.getItem('sb_sidebar_w');if(s)w=parseInt(s,10)||240;}catch(e){}sb.style.width=w+'px';}else{sb.style.width='0px';}}
 function toggleMenu(){menuOpen=!menuOpen;const m=document.getElementById('action-menu');if(m)m.className='menu-dropdown '+(menuOpen?'open':'');if(menuOpen)setTimeout(()=>document.addEventListener('click',closeMenu,{once:true}),0);}
 function closeMenu(){menuOpen=false;const m=document.getElementById('action-menu');if(m)m.className='menu-dropdown';}
 
@@ -3457,12 +3457,13 @@ function toggleKBSection(){
 
 
 function switchViewMode(mode) {
-  viewMode = mode;
+  window.currentViewMode = mode;
+  if(mode === 'map') mapSectionOpen = true;
   renderMain();
 }
 
 function toggleTestNotesSection() {
-  testNotesCollapsed = !testNotesCollapsed;
+  window.testNotesCollapsed = !window.testNotesCollapsed;
   renderMain();
 }
 
@@ -3583,58 +3584,57 @@ function renderMain(){
       </div>`;
   }
 
-  const mapSection = buildMapSection(item);
-  // Simplified layout: MAP vs SKILLS toggle, TEST always at bottom
-const topBar = `
-  <div style="display:flex;gap:8px;margin-bottom:12px;">
-    <button onclick="switchViewMode('map')" style="padding:6px 12px;background:${viewMode==='map'?'var(--color-primary)':'var(--color-background-tertiary)'};color:${viewMode==='map'?'white':'var(--color-text-secondary)'};border:0.5px solid ${viewMode==='map'?'var(--color-primary)':'var(--color-border-secondary)'};border-radius:4px;cursor:pointer;font-size:12px;font-weight:500;">📍 MAP</button>
-    <button onclick="switchViewMode('skills')" style="padding:6px 12px;background:${viewMode==='skills'?'var(--color-primary)':'var(--color-background-tertiary)'};color:${viewMode==='skills'?'white':'var(--color-text-secondary)'};border:0.5px solid ${viewMode==='skills'?'var(--color-primary)':'var(--color-border-secondary)'};border-radius:4px;cursor:pointer;font-size:12px;font-weight:500;">📚 SKILLS</button>
-  </div>`;
+  // ===== Right panel: Map / Skills toggle, Test-Notes pinned at bottom =====
+  if(viewMode === 'map') mapSectionOpen = true;
 
-const mainContent_simplified = viewMode === 'map' ? mapSection : mainContent;
-const testNotesDisplay = testNotesCollapsed ? 'none' : 'flex';
-const testChevron = testNotesCollapsed ? '▶' : '▼';
+  const tabStyle = (active) =>
+    'padding:7px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;'+
+    'border:1.5px solid '+(active?'var(--ts-navy-mid)':'var(--border-mid)')+';'+
+    'background:'+(active?'var(--ts-navy-pale)':'#fff')+';'+
+    'color:'+(active?'var(--ts-navy)':'var(--text-secondary)')+';transition:all .12s;';
 
-const testNotesHtml = `
-  <div style="margin-top:12px;background:white;border:0.5px solid var(--color-border-tertiary);border-radius:4px;display:flex;flex-direction:column;${testNotesCollapsed?'min-height:40px;':'min-height:140px;'}">
-    <div onclick="toggleTestNotesSection()" style="padding:8px 12px;background:var(--color-background-secondary);border-bottom:${testNotesCollapsed?'none':'0.5px solid var(--color-border-tertiary)'};cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-weight:500;font-size:13px;">
-      <span>TEST - NOTES</span>
-      <span>${testChevron}</span>
-    </div>
-    <div style="flex:1;overflow-y:auto;padding:${testNotesCollapsed?'0':'12px'};display:${testNotesDisplay};flex-direction:column;gap:12px;">
-      <div style="display:flex;flex-direction:column;gap:4px;flex:1;">
-        <label style="font-size:12px;font-weight:500;color:var(--color-text-secondary);">Run Test</label>
-        <textarea id="test-input" placeholder="Paste a sample input…" style="padding:8px;border:0.5px solid var(--color-border-tertiary);border-radius:4px;font-family:inherit;font-size:12px;resize:none;min-height:40px;"></textarea>
-        <button class="run-btn" id="run-btn" onclick="runTest()" style="padding:6px 12px;background:var(--color-primary);color:white;border:none;border-radius:4px;cursor:pointer;font-size:12px;margin-top:6px;"><i class="ti ti-player-play"></i> Run test</button>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:4px;flex:1;">
-        <label style="font-size:12px;font-weight:500;color:var(--color-text-secondary);">Thoughts on Skill / Map</label>
-        <textarea id="notes-input" placeholder="Jot down thoughts…" style="padding:8px;border:0.5px solid var(--color-border-tertiary);border-radius:4px;font-family:inherit;font-size:12px;resize:none;min-height:60px;">${esc(item.notes||'')}</textarea>
-        <button class="notes-save" onclick="saveNotes()" style="padding:6px 12px;background:var(--color-primary);color:white;border:none;border-radius:4px;cursor:pointer;font-size:12px;margin-top:6px;"><i class="ti ti-device-floppy"></i> Save notes</button>
-      </div>
-    </div>
-  </div>`;
+  const tabBar =
+    '<div style="display:flex;gap:8px;padding:10px 14px;border-bottom:1.5px solid var(--border-mid);background:var(--bg-panel);flex-shrink:0;">'+
+      '<button onclick="switchViewMode(\'map\')" style="'+tabStyle(viewMode==='map')+'"><i class="ti ti-map-2" style="font-size:13px;"></i> Map</button>'+
+      '<button onclick="switchViewMode(\'skills\')" style="'+tabStyle(viewMode==='skills')+'"><i class="ti ti-books" style="font-size:13px;"></i> Skills</button>'+
+    '</div>';
 
-document.getElementById('content-area').innerHTML=`<div class="content-col" style="position:relative;">${pickerHTML}${topBar}<div style="flex:1;overflow-y:auto;">${mainContent_simplified}${testNotesHtml}</div></div>`;
-  if(pickerOpen)setTimeout(()=>document.addEventListener('click',closePicker,{once:true}),0);
-  // Inject resize handles after DOM is set
-  setTimeout(()=>{
-    // Only KB and Map get resize handles — Test·Notes is fixed height
-    ['kb-section-body','map-section-body'].forEach((bodyId)=>{
-      const body = document.getElementById(bodyId);
-      if(!body) return;
-      const existing = body.parentNode.querySelector('.section-resize[data-for="'+bodyId+'"]');
-      if(existing) existing.remove();
-      const handle = document.createElement('div');
-      handle.className = 'section-resize';
-      handle.dataset.for = bodyId;
-      handle.title = 'Drag to resize';
-      body.after(handle);
-      // initSectionResize removed
-    });
-  }, 50);
+  const mapBody = '<div id="map-canvas-wrap" class="map-canvas-wrap"></div>';
+  const bodyContent = (viewMode === 'map') ? mapBody : mainContent;
+
+  const tnHeader =
+    '<div onclick="toggleTestNotesSection()" style="padding:9px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;'+(testNotesCollapsed?'':'border-bottom:1.5px solid var(--border-mid);')+'">'+
+      '<span><i class="ti ti-flask" style="font-size:12px;"></i> Test &middot; Notes</span>'+
+      '<i class="ti ti-chevron-'+(testNotesCollapsed?'up':'down')+'" style="font-size:14px;"></i>'+
+    '</div>';
+
+  const tnFields = testNotesCollapsed ? '' :
+    '<div style="padding:12px 14px;display:flex;flex-direction:column;gap:14px;max-height:240px;overflow-y:auto;">'+
+      '<div style="display:flex;flex-direction:column;gap:5px;">'+
+        '<label style="font-size:11px;font-weight:600;color:var(--text-secondary);">Run test</label>'+
+        '<textarea id="test-input" placeholder="Paste a sample input&hellip;" style="padding:8px 10px;border:1.5px solid var(--border-mid);border-radius:8px;font-family:inherit;font-size:12px;resize:vertical;min-height:48px;background:#fff;color:var(--text-primary);"></textarea>'+
+        '<button class="run-btn" id="run-btn" onclick="runTest()" style="align-self:flex-start;padding:6px 14px;background:var(--ts-navy);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;"><i class="ti ti-player-play" style="font-size:12px;"></i> Run test</button>'+
+      '</div>'+
+      '<div style="display:flex;flex-direction:column;gap:5px;">'+
+        '<label style="font-size:11px;font-weight:600;color:var(--text-secondary);">Thoughts on skill / map</label>'+
+        '<textarea id="notes-input" placeholder="Jot down thoughts&hellip;" style="padding:8px 10px;border:1.5px solid var(--border-mid);border-radius:8px;font-family:inherit;font-size:12px;resize:vertical;min-height:64px;background:#fff;color:var(--text-primary);">'+esc(item.notes||'')+'</textarea>'+
+        '<button class="notes-save" onclick="saveNotes()" style="align-self:flex-start;padding:6px 14px;background:var(--ts-navy);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;"><i class="ti ti-device-floppy" style="font-size:12px;"></i> Save notes</button>'+
+      '</div>'+
+    '</div>';
+
+  const testNotesHtml =
+    '<div style="border-top:1.5px solid var(--border-mid);background:var(--bg-panel);flex-shrink:0;display:flex;flex-direction:column;">'+tnHeader+tnFields+'</div>';
+
+  document.getElementById('content-area').innerHTML =
+    '<div class="content-col" style="position:relative;">'+
+      pickerHTML+tabBar+
+      '<div style="flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;background:var(--bg-panel);">'+bodyContent+'</div>'+
+      testNotesHtml+
+    '</div>';
+
+  if(pickerOpen) setTimeout(()=>document.addEventListener('click',closePicker,{once:true}),0);
+  if(viewMode === 'map') setTimeout(()=>{ if(typeof renderMapCanvas==='function') renderMapCanvas(); }, 30);
 }
-
 function openPicker(){pickerOpen=!pickerOpen;renderMain();}
 function closePicker(){pickerOpen=false;renderMain();}
 async function setColor(c){const item=getSelected();if(!item)return;item.color=c;item.updatedAt=Date.now();if(S.selLib==='personal')await saveP();else await saveSh();pickerOpen=true;rerender();renderMain();}
