@@ -3468,6 +3468,7 @@ function toggleTestNotesSection() {
 
 function renderMain(){
   const item=getSelected();if(!item)return;
+  const viewMode=window.currentViewMode||'map';
   const isPersonal=S.selLib==='personal';
   const hex=colorHex(item.color||'gray');
   document.getElementById('topbar').innerHTML=`
@@ -3676,12 +3677,14 @@ async function runTest(){
 }
 async function publishToTeam(){
   const item=getSelected();if(!item)return;
+  const viewMode=window.currentViewMode||'map';
   if(S.shared.find(i=>i.name===item.name)){alert(`"${item.name}" is already in the team library.`);return;}
   S.shared.push({...item,id:'sh_'+Date.now(),author:item.author,runs:[],updatedAt:Date.now()});
   await saveSh();alert(`"${item.name}" published to team!`);rerender();
 }
 function editItem(){
   const item=getSelected();if(!item)return;
+  const viewMode=window.currentViewMode||'map';
   const newPrompt=prompt('Edit prompt:',item.prompt);
   if(newPrompt&&newPrompt!==item.prompt){item.prompt=newPrompt;item.updatedAt=Date.now();if(S.selLib==='personal')saveP();else saveSh();rerender();}
 }
