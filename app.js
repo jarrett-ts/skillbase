@@ -3630,7 +3630,7 @@ document.getElementById('content-area').innerHTML=`<div class="content-col" styl
       handle.dataset.for = bodyId;
       handle.title = 'Drag to resize';
       body.after(handle);
-      initSectionResize(handle, body, 'sb_resize_'+bodyId);
+      // initSectionResize removed
     });
   }, 50);
 }
