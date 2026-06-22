@@ -12,6 +12,32 @@ let connectStart = null; // nodeId we started a connection from
 let canvasEl = null;
 let mousePos = {x:0,y:0};
 
+// ── UNDO ─────────────────────────────────────────────────────────────────────
+let undoStack = [];
+const UNDO_LIMIT = 60;
+function pushUndo(){
+  try{
+    undoStack.push(JSON.stringify(maps));
+    if(undoStack.length > UNDO_LIMIT) undoStack.shift();
+  }catch(e){}
+  updateUndoBtn();
+}
+function updateUndoBtn(){
+  const b = document.getElementById('map-undo-btn');
+  if(b) b.disabled = undoStack.length === 0;
+}
+function undoMap(){
+  if(!undoStack.length) return;
+  let prev;
+  try{ prev = JSON.parse(undoStack.pop()); }catch(e){ return; }
+  maps = prev;
+  if(!maps.find(m=>m.id===activeMapId)) activeMapId = maps.length ? maps[0].id : null;
+  saveMaps();
+  renderMapList();
+  if(mapSectionOpen) renderMapCanvas();
+  updateUndoBtn();
+}
+
 function loadMaps(){
   try { maps = JSON.parse(localStorage.getItem(MAP_KEY)||'[]'); } catch(e){ maps=[]; }
   if(!activeMapId && maps.length) activeMapId = maps[0].id;
@@ -24,6 +50,7 @@ function getActiveMap(){ return maps.find(m=>m.id===activeMapId)||null; }
 function newMap(){
   const name = prompt('Map name:','Untitled map');
   if(!name) return;
+  pushUndo();
   const id = 'map_'+Date.now();
   maps.push({id, name, nodes:[], edges:[]});
   activeMapId = id;
@@ -36,6 +63,7 @@ function deleteMap(id, e){
   e.stopPropagation();
   const m = maps.find(x=>x.id===id);
   if(!m||!confirm('Delete map "'+m.name+'"?')) return;
+  pushUndo();
   maps = maps.filter(x=>x.id!==id);
   if(activeMapId===id) activeMapId = maps.length ? maps[0].id : null;
   saveMaps();
@@ -48,7 +76,7 @@ function renameMap(id, e){
   const m = maps.find(x=>x.id===id);
   if(!m) return;
   const name = prompt('Rename map:', m.name);
-  if(name && name!==m.name){ m.name=name; saveMaps(); renderMapList(); }
+  if(name && name!==m.name){ pushUndo(); m.name=name; saveMaps(); renderMapList(); }
 }
 
 function selectMap(id){
@@ -86,6 +114,7 @@ function addItemToMap(itemId){
   const row = Math.floor(map.nodes.length / 3);
   const x = 40 + col * 200;
   const y = 40 + row * 120;
+  pushUndo();
   map.nodes.push({id:'n_'+Date.now(), itemId, x, y});
   saveMaps();
   renderMapCanvas();
@@ -106,6 +135,7 @@ function renderMapCanvas(){
   const isEmpty = map.nodes.length===0;
   wrap.innerHTML = `
     <div class="map-toolbar">
+      <button class="map-tool-btn" id="map-undo-btn" onclick="undoMap()" title="Undo (Cmd/Ctrl+Z)"><i class="ti ti-arrow-back-up" style="font-size:12px"></i> Undo</button>
       <span class="map-hint" style="font-size:11px;color:var(--text-muted);background:rgba(255,255,255,.85);padding:5px 9px;border-radius:7px;border:1px solid var(--border-mid);">Drag a side dot &rarr; another card to connect</span>
       <button class="map-tool-btn" onclick="clearMapEdges()" title="Clear connections"><i class="ti ti-eraser" style="font-size:12px"></i></button>
       <button class="map-tool-btn" onclick="clearMap()" title="Clear all"><i class="ti ti-trash" style="font-size:12px"></i> Clear</button>
@@ -123,6 +153,7 @@ function renderMapCanvas(){
 
   renderNodes(map);
   renderEdges(map);
+  updateUndoBtn();
 }
 
 function initMapResize(handle, wrap){
@@ -227,7 +258,7 @@ function startNodeDrag(e, nodeId){
   if(!node) return;
   const el = document.getElementById('mn_'+nodeId);
   if(el) el.classList.add('dragging');
-  nodeDragState = {nodeId, startMouseX:e.clientX, startMouseY:e.clientY, origX:node.x, origY:node.y};
+  nodeDragState = {nodeId, startMouseX:e.clientX, startMouseY:e.clientY, origX:node.x, origY:node.y, snap:JSON.stringify(maps)};
   document.addEventListener('mousemove', onNodeDrag);
   document.addEventListener('mouseup', endNodeDrag, {once:true});
 }
@@ -247,6 +278,13 @@ function endNodeDrag(){
   if(!nodeDragState) return;
   const el = document.getElementById('mn_'+nodeDragState.nodeId);
   if(el) el.classList.remove('dragging');
+  const map = getActiveMap();
+  const node = map ? map.nodes.find(n=>n.id===nodeDragState.nodeId) : null;
+  const moved = node && (node.x!==nodeDragState.origX || node.y!==nodeDragState.origY);
+  if(moved && nodeDragState.snap){
+    try{ undoStack.push(nodeDragState.snap); if(undoStack.length>UNDO_LIMIT) undoStack.shift(); }catch(e){}
+    updateUndoBtn();
+  }
   saveMaps();
   nodeDragState = null;
   document.removeEventListener('mousemove', onNodeDrag);
@@ -331,7 +369,7 @@ function endConnect(e){
   const map = getActiveMap();
   if(!map) return;
   const exists = map.edges.find(ed=>(ed.from===drag.fromId&&ed.to===toId)||(ed.from===toId&&ed.to===drag.fromId));
-  if(!exists) map.edges.push({ from: drag.fromId, to: toId });
+  if(!exists){ pushUndo(); map.edges.push({ from: drag.fromId, to: toId }); }
   saveMaps();
   renderEdges(map);
 }
@@ -339,6 +377,7 @@ function endConnect(e){
 function clearMapEdges(){
   const map = getActiveMap();
   if(!map||!confirm('Clear all connections?')) return;
+  pushUndo();
   map.edges=[];
   saveMaps();
   renderEdges(map);
@@ -346,6 +385,7 @@ function clearMapEdges(){
 function clearMap(){
   const map = getActiveMap();
   if(!map||!confirm('Clear all nodes and connections from this map?')) return;
+  pushUndo();
   map.nodes=[];
   map.edges=[];
   saveMaps();
@@ -354,6 +394,7 @@ function clearMap(){
 function removeNodeFromMap(nodeId){
   const map = getActiveMap();
   if(!map) return;
+  pushUndo();
   map.nodes = map.nodes.filter(n=>n.id!==nodeId);
   map.edges = map.edges.filter(e=>e.from!==nodeId&&e.to!==nodeId);
   saveMaps();
@@ -372,3 +413,16 @@ function toggleMapSection(bodyId){
   if(chevron) chevron.classList.toggle('open', mapSectionOpen);
   if(mapSectionOpen) renderMapCanvas();
 }
+
+
+// ── UNDO keyboard shortcut (Cmd/Ctrl+Z) ──────────────────────────────────────
+document.addEventListener('keydown', (e)=>{
+  if((e.metaKey || e.ctrlKey) && !e.shiftKey && (e.key === 'z' || e.key === 'Z')){
+    const t = e.target;
+    if(t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    if(typeof undoStack !== 'undefined' && undoStack.length){
+      e.preventDefault();
+      undoMap();
+    }
+  }
+});
