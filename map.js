@@ -103,12 +103,12 @@ function renderMapList(){
     </div>`).join('');
 }
 
-// ── ADD SKILL TO MAP ────────────────────────────────────────────────────────
+// ── ADD SKILL TO MAP (ALLOW MULTIPLE INSTANCES) ────────────────────────────
 function addItemToMap(itemId){
   if(!mapSectionOpen) return;
   const map = getActiveMap();
   if(!map) { alert('Create a map first'); return; }
-  if(map.nodes.find(n=>n.itemId===itemId)) return; // already on map; skip silently
+  // NOW ALLOWS MULTIPLE INSTANCES OF SAME SKILL!
   // place in a grid-ish pattern
   const col = map.nodes.length % 3;
   const row = Math.floor(map.nodes.length / 3);
@@ -117,6 +117,207 @@ function addItemToMap(itemId){
   pushUndo();
   map.nodes.push({id:'n_'+Date.now(), itemId, x, y});
   saveMaps();
+  renderMapCanvas();
+}
+
+// ── CREATE NEW SKILL DIRECTLY ON CANVAS ────────────────────────────────────
+function createSkillOnCanvas(){
+  const map = getActiveMap();
+  if(!map) { alert('Create a map first'); return; }
+  
+  // Show modal dialog to create a new skill
+  const modalHTML = `
+    <div id="create-skill-modal" style="
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      font-family: inherit;
+    ">
+      <div style="
+        background: white;
+        border-radius: 10px;
+        padding: 24px;
+        width: 90%;
+        max-width: 450px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      ">
+        <h3 style="margin: 0 0 16px 0; font-size: 18px; color: var(--color-text-primary);">Create New Skill</h3>
+        
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 12px; font-weight: 600; color: var(--color-text-secondary); margin-bottom: 6px;">Skill Name *</label>
+          <input 
+            id="create-skill-name" 
+            type="text" 
+            placeholder="e.g., Data Processing"
+            style="
+              width: 100%;
+              padding: 8px 12px;
+              border: 1px solid var(--color-border-primary);
+              border-radius: 6px;
+              font-size: 14px;
+              box-sizing: border-box;
+            "
+            autofocus
+          />
+        </div>
+        
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 12px; font-weight: 600; color: var(--color-text-secondary); margin-bottom: 6px;">Type</label>
+          <select 
+            id="create-skill-type"
+            style="
+              width: 100%;
+              padding: 8px 12px;
+              border: 1px solid var(--color-border-primary);
+              border-radius: 6px;
+              font-size: 14px;
+              box-sizing: border-box;
+            "
+          >
+            <option value="core">Core</option>
+            <option value="workflow">Workflow</option>
+            <option value="integration">Integration</option>
+            <option value="utility">Utility</option>
+          </select>
+        </div>
+        
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 12px; font-weight: 600; color: var(--color-text-secondary); margin-bottom: 6px;">Color</label>
+          <select 
+            id="create-skill-color"
+            style="
+              width: 100%;
+              padding: 8px 12px;
+              border: 1px solid var(--color-border-primary);
+              border-radius: 6px;
+              font-size: 14px;
+              box-sizing: border-box;
+            "
+          >
+            <option value="blue">Blue</option>
+            <option value="purple">Purple</option>
+            <option value="teal">Teal</option>
+            <option value="pink">Pink</option>
+            <option value="orange">Orange</option>
+            <option value="green">Green</option>
+            <option value="gray">Gray</option>
+          </select>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+          <label style="display: block; font-size: 12px; font-weight: 600; color: var(--color-text-secondary); margin-bottom: 6px;">Description</label>
+          <textarea 
+            id="create-skill-desc"
+            placeholder="What does this skill do?"
+            style="
+              width: 100%;
+              padding: 8px 12px;
+              border: 1px solid var(--color-border-primary);
+              border-radius: 6px;
+              font-size: 14px;
+              resize: vertical;
+              min-height: 80px;
+              box-sizing: border-box;
+            "
+          ></textarea>
+        </div>
+        
+        <div style="display: flex; gap: 12px; justify-content: flex-end;">
+          <button 
+            onclick="closeCreateSkillModal()"
+            style="
+              padding: 8px 16px;
+              border: 1px solid var(--color-border-primary);
+              background: white;
+              color: var(--color-text-primary);
+              border-radius: 6px;
+              cursor: pointer;
+              font-size: 14px;
+              font-weight: 500;
+            "
+          >Cancel</button>
+          <button 
+            onclick="confirmCreateSkillOnCanvas()"
+            style="
+              padding: 8px 16px;
+              border: none;
+              background: var(--color-primary, #00B4D8);
+              color: white;
+              border-radius: 6px;
+              cursor: pointer;
+              font-size: 14px;
+              font-weight: 500;
+            "
+          >Add to Map</button>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  document.body.insertAdjacentHTML('beforeend', modalHTML);
+  document.getElementById('create-skill-name').focus();
+}
+
+function closeCreateSkillModal(){
+  const modal = document.getElementById('create-skill-modal');
+  if(modal) modal.remove();
+}
+
+function confirmCreateSkillOnCanvas(){
+  const name = document.getElementById('create-skill-name').value.trim();
+  const type = document.getElementById('create-skill-type').value;
+  const color = document.getElementById('create-skill-color').value;
+  const description = document.getElementById('create-skill-desc').value.trim();
+  
+  if(!name){
+    alert('Please enter a skill name');
+    return;
+  }
+  
+  // Create a new skill item in the global S object
+  const newItem = {
+    id: 'skill_'+Date.now(),
+    name: name,
+    type: type,
+    color: color,
+    description: description,
+    icon: 'ti-puzzle', // default icon
+    tags: [],
+    private: true,
+    archived: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  
+  // Add to personal skills
+  if(!S.personal) S.personal = [];
+  S.personal.push(newItem);
+  
+  // Close modal
+  closeCreateSkillModal();
+  
+  // Add this new skill to the canvas
+  const map = getActiveMap();
+  if(!map) return;
+  
+  const col = map.nodes.length % 3;
+  const row = Math.floor(map.nodes.length / 3);
+  const x = 40 + col * 200;
+  const y = 40 + row * 120;
+  
+  pushUndo();
+  map.nodes.push({id:'n_'+Date.now(), itemId: newItem.id, x, y});
+  saveMaps();
+  
+  // Update skill list and re-render
+  renderSkillsUI();
   renderMapCanvas();
 }
 
@@ -136,7 +337,8 @@ function renderMapCanvas(){
   wrap.innerHTML = `
     <div class="map-toolbar">
       <button class="map-tool-btn" id="map-undo-btn" onclick="undoMap()" title="Undo (Cmd/Ctrl+Z)"><i class="ti ti-arrow-back-up" style="font-size:12px"></i> Undo</button>
-      <span class="map-hint" style="font-size:11px;color:var(--text-muted);background:rgba(255,255,255,.85);padding:5px 9px;border-radius:7px;border:1px solid var(--border-mid);">Drag a side dot &rarr; another card to connect</span>
+      <button class="map-tool-btn" onclick="createSkillOnCanvas()" title="Create new skill on map"><i class="ti ti-circle-plus" style="font-size:12px"></i> Create Skill</button>
+      <span class="map-hint" style="font-size:11px;color:var(--text-muted);background:rgba(255,255,255,.85);padding:5px 9px;border-radius:7px;border:1px solid var(--border-mid);">Drag a side dot → another card to connect</span>
       <button class="map-tool-btn" onclick="clearMapEdges()" title="Clear connections"><i class="ti ti-eraser" style="font-size:12px"></i></button>
       <button class="map-tool-btn" onclick="clearMap()" title="Clear all"><i class="ti ti-trash" style="font-size:12px"></i> Clear</button>
     </div>
