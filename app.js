@@ -3456,23 +3456,181 @@ function toggleKBSection(){
 
 
 
+function switchViewMode(mode) {
+  viewMode = mode;
+  renderMain();
+}
+
+function toggleTestNotesSection() {
+  testNotesCollapsed = !testNotesCollapsed;
+  renderMain();
+}
+
 function renderMain(){
-  const item=getSelected();
-  if(!item) return;
+  const item=getSelected();if(!item)return;
   const isPersonal=S.selLib==='personal';
   const hex=colorHex(item.color||'gray');
-  document.getElementById('topbar').innerHTML=`<div class="topbar-left"><button class="icon-btn" onclick="toggleSidebar()"><i class="ti ti-layout-sidebar"></i></button><div class="menu-wrap"><button class="icon-btn" onclick="toggleMenu()"><i class="ti ti-adjustments-horizontal"></i></button><div class="menu-dropdown" id="action-menu"><button class="menu-item" onclick="openInClaude();closeMenu()"><i class="ti ti-message" style="font-size:14px;color:#5A6280"></i> Open in Claude</button><button class="menu-item" onclick="editItem();closeMenu()"><i class="ti ti-pencil" style="font-size:14px;color:#5A6280"></i> Edit prompt</button><hr class="menu-divider"><button class="menu-item" onclick="startRename('${item.id}');closeMenu()"><i class="ti ti-cursor-text" style="font-size:14px;color:#5A6280"></i> Rename</button><button class="menu-item danger" onclick="archiveItem('${item.id}','${S.selLib}');closeMenu()"><i class="ti ti-archive" style="font-size:14px"></i> Archive</button></div></div><div class="badge-stack"><span class="badge b-${item.type}">${item.type}</span><span class="badge ${isPersonal?'b-personal':'b-shared'}">${isPersonal?'mine':'team'}</span></div><div class="item-icon-lg" style="background:${hex}18;color:${hex};border:1.5px solid ${hex}40;" onclick="openPicker()"><i class="ti ${item.icon||'ti-puzzle'}" style="font-size:14px;"></i></div><span class="topbar-title">${esc(item.name)}</span></div>`;
-  const pickerHTML=pickerOpen?`<div class="picker-popup open"><div class="picker-label">Color</div><div class="color-row">${Object.entries(COLORS).map(([n,h])=>`<div class="color-dot${item.color===n?' active':''}" style="background:${h}" onclick="setColor('${n}')" title="${n}"></div>`).join('')}</div><div class="picker-label">Icon</div><div class="icon-row">${ICONS.map(ic=>`<div class="icon-opt${item.icon===ic?' active':''}" onclick="setIcon('${ic}')"><i class="ti ${ic}"></i></div>`).join('')}</div></div>`:'';
-  const viewMode=window.currentViewMode||'map';
-  let skillsHTML='';
-  if(item.type==='skill'){skillsHTML=`<div style="display:flex;flex-direction:column;height:100%;background:white;"><div style="padding:8px 12px;background:var(--bg-surface);border-bottom:0.5px solid var(--border-mid);font-weight:500;font-size:13px;flex-shrink:0;">SKILL KNOWLEDGE BASE</div><div style="flex:1;overflow-y:auto;padding:16px;"><div style="margin-bottom:20px;"><div style="font-weight:700;font-size:17px;color:var(--text-primary);margin-bottom:8px;letter-spacing:-0.3px;">${esc(item.name)}</div><div style="font-size:13px;color:var(--text-secondary);line-height:1.9;letter-spacing:0.2px;">${item.description?esc(item.description):'<em style="color:var(--border-mid);">No description provided</em>'}</div></div><div style="margin-top:24px;"><div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px;">Prompt</div><div style="background:white;border:1.5px solid var(--color-primary);border-radius:8px;padding:14px;font-size:12px;white-space:pre-wrap;overflow-x:auto;line-height:1.7;font-family:'Monaco','Menlo','Ubuntu Mono',monospace;color:var(--text-primary);box-shadow:inset 0 1px 2px rgba(0,0,0,0.03);">${esc(item.prompt)}</div></div></div></div>`;} else {const connectedIds=item.connectedSkills||[];const allSkills=getAllSkills();const connected=allSkills.filter(s=>connectedIds.includes(s.id));skillsHTML=`<div style="display:flex;flex-direction:column;height:100%;background:white;"><div style="padding:8px 12px;background:var(--bg-surface);border-bottom:0.5px solid var(--border-mid);font-weight:500;font-size:13px;flex-shrink:0;">SYSTEM PROMPT</div><div style="flex:1;overflow-y:auto;padding:12px;"><div style="background:white;border:1.5px solid var(--color-primary);border-radius:8px;padding:14px;font-size:12px;white-space:pre-wrap;overflow-x:auto;margin-bottom:16px;font-family:'Monaco','Menlo','Ubuntu Mono',monospace;line-height:1.7;">${esc(item.prompt)}</div><div style="font-size:12px;"><strong>Connected Skills (${connected.length}):</strong></div><div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;">${connected.length?connected.map(s=>'<span style="background:var(--bg-surface);padding:4px 8px;border-radius:3px;font-size:11px;">'+esc(s.name)+'</span>').join(''):'<span style="color:var(--text-muted);font-size:12px;">None</span>'}</div></div></div>`;}
-  const mapHTML=`<div style="display:flex;flex-direction:column;height:100%;background:white;"><div style="padding:8px 12px;background:var(--bg-surface);border-bottom:0.5px solid var(--border-mid);font-weight:500;font-size:13px;flex-shrink:0;">MAP</div><div id="map-canvas-wrap" style="flex:1;overflow:hidden;background:white;"></div></div>`;
-  const mainContent=viewMode==='skills'?skillsHTML:mapHTML;
-  const testCollapsed=window.testNotesCollapsed||false;
-  const testHTML=`<div style="background:white;border-top:0.5px solid var(--border-mid);display:flex;flex-direction:column;${testCollapsed?'min-height:32px;':'min-height:140px;'}flex-shrink:0;"><div onclick="window.testNotesCollapsed=!window.testNotesCollapsed;renderMain();" style="padding:8px 12px;background:var(--bg-surface);border-bottom:${testCollapsed?'none':'0.5px solid var(--border-mid)'};cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-weight:500;font-size:13px;flex-shrink:0;"><span>TEST - NOTES</span><span style="font-size:12px;">${testCollapsed?'▶':'▼'}</span></div>${testCollapsed?'':`<div style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:12px;"><div style="display:flex;flex-direction:column;gap:4px;flex:1;"><label style="font-size:12px;font-weight:500;color:var(--text-secondary);">Run Test</label><textarea id="test-input" placeholder="Paste a sample input…" style="padding:8px;border:0.5px solid var(--border-mid);border-radius:4px;font-family:inherit;font-size:12px;resize:none;min-height:40px;flex:1;"></textarea><button onclick="runTest()" style="padding:6px 12px;background:var(--color-primary);color:white;border:none;border-radius:4px;cursor:pointer;font-size:12px;margin-top:6px;"><i class="ti ti-player-play"></i> Run test</button></div><div style="display:flex;flex-direction:column;gap:4px;flex:1;"><label style="font-size:12px;font-weight:500;color:var(--text-secondary);">Thoughts on Skill / Map</label><textarea id="notes-input" placeholder="Jot down thoughts…" style="padding:8px;border:0.5px solid var(--border-mid);border-radius:4px;font-family:inherit;font-size:12px;resize:none;min-height:60px;flex:1;">${esc(item.notes||'')}</textarea><button onclick="saveNotes()" style="padding:6px 12px;background:var(--color-primary);color:white;border:none;border-radius:4px;cursor:pointer;font-size:12px;margin-top:6px;"><i class="ti ti-device-floppy"></i> Save notes</button></div></div>`}</div>`;
-  document.getElementById('content-area').innerHTML=`<div style="position:relative;display:flex;flex-direction:column;height:100%;">${pickerHTML}<div style="display:flex;gap:8px;padding:12px;background:var(--bg-surface);border-bottom:0.5px solid var(--border-mid);"><button onclick="window.currentViewMode='map';renderMain();" style="padding:6px 12px;background:${viewMode==='map'?'var(--color-primary)':'var(--bg-surface)'};color:var(--text-primary);border:0.5px solid ${viewMode==='map'?'var(--color-primary)':'var(--border-mid)'};border-radius:4px;cursor:pointer;font-size:12px;font-weight:500;">📍 MAP</button><button onclick="window.currentViewMode='skills';renderMain();" style="padding:6px 12px;background:${viewMode==='skills'?'var(--color-primary)':'var(--bg-surface)'};color:var(--text-primary);border:0.5px solid ${viewMode==='skills'?'var(--color-primary)':'var(--border-mid)'};border-radius:4px;cursor:pointer;font-size:12px;font-weight:500;">📚 SKILLS</button></div><div style="flex:1;overflow-y:auto;min-height:0;">${mainContent}</div>${testHTML}</div>`;
+  document.getElementById('topbar').innerHTML=`
+    <div class="topbar-left">
+      <button class="icon-btn" onclick="toggleSidebar()"><i class="ti ti-layout-sidebar"></i></button>
+      <div class="menu-wrap">
+        <button class="icon-btn" onclick="toggleMenu()"><i class="ti ti-adjustments-horizontal"></i></button>
+        <div class="menu-dropdown" id="action-menu">
+          <button class="menu-item" onclick="openInClaude();closeMenu()"><i class="ti ti-message" style="font-size:14px;color:#5A6280"></i> Open in Claude</button>
+          <button class="menu-item" onclick="editItem();closeMenu()"><i class="ti ti-pencil" style="font-size:14px;color:#5A6280"></i> Edit prompt</button>
+          ${isPersonal?`<button class="menu-item" onclick="publishToTeam();closeMenu()"><i class="ti ti-arrow-up" style="font-size:14px;color:#5A6280"></i> Publish to team</button>`:''}
+          <hr class="menu-divider">
+          <button class="menu-item" onclick="startRename('${item.id}');closeMenu()"><i class="ti ti-cursor-text" style="font-size:14px;color:#5A6280"></i> Rename</button>
+          <button class="menu-item danger" onclick="archiveItem('${item.id}','${S.selLib}');closeMenu()"><i class="ti ti-archive" style="font-size:14px"></i> Archive</button>
+        </div>
+      </div>
+      <div class="badge-stack">
+        <span class="badge b-${item.type}">${item.type}</span>
+        <span class="badge ${isPersonal?'b-personal':'b-shared'}">${isPersonal?'mine':'team'}</span>
+      </div>
+      <div class="item-icon-lg" style="background:${hex}18;color:${hex};border:1.5px solid ${hex}40;" onclick="openPicker()">
+        <i class="ti ${item.icon||'ti-puzzle'}" style="font-size:14px;"></i>
+      </div>
+      <span class="topbar-title">${esc(item.name)}</span>
+    </div>`;
+
+  const pickerHTML=pickerOpen?`
+    <div class="picker-popup open">
+      <div class="picker-label">Color</div>
+      <div class="color-row">${Object.entries(COLORS).map(([n,h])=>`<div class="color-dot${item.color===n?' active':''}" style="background:${h}" onclick="setColor('${n}')" title="${n}"></div>`).join('')}</div>
+      <div class="picker-label">Icon</div>
+      <div class="icon-row">${ICONS.map(ic=>`<div class="icon-opt${item.icon===ic?' active':''}" onclick="setIcon('${ic}')"><i class="ti ${ic}"></i></div>`).join('')}</div>
+    </div>`:'';
+
+
+  const drawer=`
+    <div class="section-header" onclick="toggleDrawer()">
+      <div class="section-title"><i class="ti ti-tools" style="font-size:12px"></i> Test · Notes</div>
+      <i class="ti ti-chevron-up section-chevron ${drawerOpen?'open':''}" id="drawer-chevron"></i>
+    </div>
+    <div class="section-body ${drawerOpen?'expanded':'collapsed'}" id="top-drawer">
+      <div class="drawer-body">
+        <div class="drawer-section">
+          <div class="drawer-section-label">Test input</div>
+          <textarea id="test-input" placeholder="Paste a sample input…"></textarea>
+          <button class="run-btn" id="run-btn" onclick="runTest()"><i class="ti ti-player-play"></i> Run test</button>
+        </div>
+        <div class="drawer-section">
+          <div class="drawer-section-label">Notes</div>
+          <textarea id="notes-input" placeholder="Scratchpad…">${esc(item.notes||'')}</textarea>
+          <button class="notes-save" onclick="saveNotes()"><i class="ti ti-device-floppy"></i> Save notes</button>
+        </div>
+      </div>
+    </div>`;
+
+  let mainContent='';
+  if(item.type==='skill'){
+    const kbOpen = localStorage.getItem('sb_kb_open') !== '0'; // defaults to open
+    mainContent=`
+      <div class="section-header" onclick="toggleKBSection()">
+        <div class="section-title"><i class="ti ti-books" style="font-size:12px;color:#0E6E5C"></i> Skill knowledge base</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="author-chip"><div class="avatar">${initials(item.author||'Me')}</div>${esc(item.author||'You')}</div>
+          <i class="ti ti-chevron-up section-chevron ${kbOpen?'open':''}" id="kb-chevron"></i>
+        </div>
+      </div>
+      <div id="kb-section-body" class="section-body ${kbOpen?'expanded':'collapsed'}">
+      <div class="main-scroll">
+        <div class="skill-desc-block">
+          <div class="skill-desc-name">${esc(item.name)}</div>
+          ${item.description?`<div class="skill-desc-text">${esc(item.description)}</div>`:`<div class="skill-desc-empty">No description yet</div>`}
+        </div>
+        <div class="md-body">${md(item.prompt)}</div>
+        <div class="skill-meta-footer">
+          <div><div class="meta-label">Author</div><div class="meta-value">${esc(item.author||'You')}</div></div>
+          <div><div class="meta-label">Updated</div><div class="meta-value">${fullDate(item.updatedAt)}</div></div>
+        </div>
+        ${historyPanel(item)}
+      </div>
+      </div>`;
+  } else {
+    const connectedIds=item.connectedSkills||[];
+    const allSkills=getAllSkills();
+    const connected=allSkills.filter(s=>connectedIds.includes(s.id));
+    const unconnected=allSkills.filter(s=>!connectedIds.includes(s.id));
+    const kbOpen = localStorage.getItem('sb_kb_open') !== '0'; // defaults to open
+    mainContent=`
+      <div class="section-header" onclick="toggleKBSection()">
+        <div class="section-title"><i class="ti ti-code" style="font-size:12px;color:#4A2080"></i> System prompt</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="author-chip"><div class="avatar">${initials(item.author||'Me')}</div>${esc(item.author||'You')}</div>
+          <i class="ti ti-chevron-up section-chevron ${kbOpen?'open':''}" id="kb-chevron"></i>
+        </div>
+      </div>
+      <div id="kb-section-body" class="section-body ${kbOpen?'expanded':'collapsed'}">
+      <div class="main-scroll">
+        <div class="prompt-text">${esc(item.prompt)}</div>
+        <div class="skills-section">
+          <div style="padding:7px 12px;font-size:10px;font-weight:700;color:#0E6E5C;text-transform:uppercase;letter-spacing:.08em;display:flex;align-items:center;justify-content:space-between;border-bottom:1.5px solid var(--border-mid);">
+            <div style="display:flex;align-items:center;gap:6px;"><i class="ti ti-plug" style="font-size:12px"></i> Connected skills</div>
+            <span style="color:var(--text-muted);text-transform:none;letter-spacing:0;font-size:11px;font-weight:400;">${connected.length} of ${allSkills.length}</span>
+          </div>
+          <div class="skills-list">
+            ${connected.length?connected.map(s=>`<div class="skill-chip" onclick="selectItem('${s.id}','${S.personal.find(x=>x.id===s.id)?'personal':'shared'}')">${iconEl(s.icon,s.color,11)}${esc(s.name)}<i class="ti ti-x" style="font-size:11px;opacity:.4" onclick="event.stopPropagation();disconnectSkill('${item.id}','${s.id}')"></i></div>`).join(''):'<span class="skill-chip-empty">No skills connected yet</span>'}
+            ${unconnected.length?`<div class="add-skill-chip" onclick="addSkillPrompt()"><i class="ti ti-plus" style="font-size:12px"></i> Connect skill</div>`:''}
+          </div>
+        </div>
+        ${historyPanel(item)}
+      </div>
+      <div class="section-resize" id="kb-resize"></div>
+      </div>`;
+  }
+
+  const mapSection = buildMapSection(item);
+  // Simplified layout: MAP vs SKILLS toggle, TEST always at bottom
+const topBar = `
+  <div style="display:flex;gap:8px;margin-bottom:12px;">
+    <button onclick="switchViewMode('map')" style="padding:6px 12px;background:${viewMode==='map'?'var(--color-primary)':'var(--color-background-tertiary)'};color:${viewMode==='map'?'white':'var(--color-text-secondary)'};border:0.5px solid ${viewMode==='map'?'var(--color-primary)':'var(--color-border-secondary)'};border-radius:4px;cursor:pointer;font-size:12px;font-weight:500;">📍 MAP</button>
+    <button onclick="switchViewMode('skills')" style="padding:6px 12px;background:${viewMode==='skills'?'var(--color-primary)':'var(--color-background-tertiary)'};color:${viewMode==='skills'?'white':'var(--color-text-secondary)'};border:0.5px solid ${viewMode==='skills'?'var(--color-primary)':'var(--color-border-secondary)'};border-radius:4px;cursor:pointer;font-size:12px;font-weight:500;">📚 SKILLS</button>
+  </div>`;
+
+const mainContent_simplified = viewMode === 'map' ? mapSection : mainContent;
+const testNotesDisplay = testNotesCollapsed ? 'none' : 'flex';
+const testChevron = testNotesCollapsed ? '▶' : '▼';
+
+const testNotesHtml = `
+  <div style="margin-top:12px;background:white;border:0.5px solid var(--color-border-tertiary);border-radius:4px;display:flex;flex-direction:column;${testNotesCollapsed?'min-height:40px;':'min-height:140px;'}">
+    <div onclick="toggleTestNotesSection()" style="padding:8px 12px;background:var(--color-background-secondary);border-bottom:${testNotesCollapsed?'none':'0.5px solid var(--color-border-tertiary)'};cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-weight:500;font-size:13px;">
+      <span>TEST - NOTES</span>
+      <span>${testChevron}</span>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:${testNotesCollapsed?'0':'12px'};display:${testNotesDisplay};flex-direction:column;gap:12px;">
+      <div style="display:flex;flex-direction:column;gap:4px;flex:1;">
+        <label style="font-size:12px;font-weight:500;color:var(--color-text-secondary);">Run Test</label>
+        <textarea id="test-input" placeholder="Paste a sample input…" style="padding:8px;border:0.5px solid var(--color-border-tertiary);border-radius:4px;font-family:inherit;font-size:12px;resize:none;min-height:40px;"></textarea>
+        <button class="run-btn" id="run-btn" onclick="runTest()" style="padding:6px 12px;background:var(--color-primary);color:white;border:none;border-radius:4px;cursor:pointer;font-size:12px;margin-top:6px;"><i class="ti ti-player-play"></i> Run test</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;flex:1;">
+        <label style="font-size:12px;font-weight:500;color:var(--color-text-secondary);">Thoughts on Skill / Map</label>
+        <textarea id="notes-input" placeholder="Jot down thoughts…" style="padding:8px;border:0.5px solid var(--color-border-tertiary);border-radius:4px;font-family:inherit;font-size:12px;resize:none;min-height:60px;">${esc(item.notes||'')}</textarea>
+        <button class="notes-save" onclick="saveNotes()" style="padding:6px 12px;background:var(--color-primary);color:white;border:none;border-radius:4px;cursor:pointer;font-size:12px;margin-top:6px;"><i class="ti ti-device-floppy"></i> Save notes</button>
+      </div>
+    </div>
+  </div>`;
+
+document.getElementById('content-area').innerHTML=`<div class="content-col" style="position:relative;">${pickerHTML}${topBar}<div style="flex:1;overflow-y:auto;">${mainContent_simplified}${testNotesHtml}</div></div>`;
   if(pickerOpen)setTimeout(()=>document.addEventListener('click',closePicker,{once:true}),0);
-  if(viewMode==='map') setTimeout(()=>{if(typeof renderMapCanvas==='function')renderMapCanvas();},100);
+  // Inject resize handles after DOM is set
+  setTimeout(()=>{
+    // Only KB and Map get resize handles — Test·Notes is fixed height
+    ['kb-section-body','map-section-body'].forEach((bodyId)=>{
+      const body = document.getElementById(bodyId);
+      if(!body) return;
+      const existing = body.parentNode.querySelector('.section-resize[data-for="'+bodyId+'"]');
+      if(existing) existing.remove();
+      const handle = document.createElement('div');
+      handle.className = 'section-resize';
+      handle.dataset.for = bodyId;
+      handle.title = 'Drag to resize';
+      body.after(handle);
+      initSectionResize(handle, body, 'sb_resize_'+bodyId);
+    });
+  }, 50);
 }
 
 function openPicker(){pickerOpen=!pickerOpen;renderMain();}
