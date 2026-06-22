@@ -3488,13 +3488,19 @@ function renderMain(){
   const content=document.getElementById('content-area');
   content.innerHTML=`<div style="position:relative;display:flex;flex-direction:column;height:100%;">${pickerHTML}<div style="display:flex;gap:8px;padding:12px;background:var(--bg-surface);border-bottom:0.5px solid var(--border-mid);"><button id="btn-map" style="padding:6px 12px;background:${viewMode==='map'?'var(--color-primary)':'var(--bg-surface)'};color:var(--text-primary);border:0.5px solid ${viewMode==='map'?'var(--color-primary)':'var(--border-mid)'};border-radius:4px;cursor:pointer;font-size:12px;font-weight:500;">📍 MAP</button><button id="btn-skills" style="padding:6px 12px;background:${viewMode==='skills'?'var(--color-primary)':'var(--bg-surface)'};color:var(--text-primary);border:0.5px solid ${viewMode==='skills'?'var(--color-primary)':'var(--border-mid)'};border-radius:4px;cursor:pointer;font-size:12px;font-weight:500;">📚 SKILLS</button></div><div style="flex:1;overflow-y:auto;min-height:0;">${mainContent}</div>${testHTML}</div>`;
   
-  document.getElementById('btn-map').onclick=()=>{window.currentViewMode='map';renderMain();};
-  document.getElementById('btn-skills').onclick=()=>{window.currentViewMode='skills';renderMain();};
-  document.getElementById('test-header').onclick=()=>{window.testNotesCollapsed=!window.testNotesCollapsed;renderMain();};
+  setTimeout(()=>{
+    const btnMap=document.getElementById('btn-map');
+    const btnSkills=document.getElementById('btn-skills');
+    const testHeader=document.getElementById('test-header');
+    
+    if(btnMap) btnMap.onclick=()=>{window.currentViewMode='map';renderMain();};
+    if(btnSkills) btnSkills.onclick=()=>{window.currentViewMode='skills';renderMain();};
+    if(testHeader) testHeader.onclick=()=>{window.testNotesCollapsed=!window.testNotesCollapsed;renderMain();};
+  },10);
   
   if(pickerOpen)setTimeout(()=>document.addEventListener('click',closePicker,{once:true}),0);
   if(viewMode==='map'){
-    setTimeout(()=>{if(typeof renderMapCanvas==='function')renderMapCanvas();},50);
+    setTimeout(()=>{if(typeof renderMapCanvas==='function')renderMapCanvas();},100);
   }
 }
 
