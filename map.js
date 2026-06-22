@@ -80,9 +80,7 @@ function addItemToMap(itemId){
   if(!mapSectionOpen) return;
   const map = getActiveMap();
   if(!map) { alert('Create a map first'); return; }
-  if(map.nodes.find(n=>n.itemId===itemId)){
-    alert('Already on this map'); return;
-  }
+  if(map.nodes.find(n=>n.itemId===itemId)) return; // already on map; skip silently
   // place in a grid-ish pattern
   const col = map.nodes.length % 3;
   const row = Math.floor(map.nodes.length / 3);
