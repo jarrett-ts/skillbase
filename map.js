@@ -239,9 +239,14 @@ function renderNodes(map){
   const allItems = [...(S.personal||[]),...(S.shared||[])].filter(i=>!i.archived);
   
   layer.innerHTML = map.nodes.map(node=>{
-    const item = allItems.find(i=>i.id===node.itemId);
-    if(!item) return '';
-    const hex = colorHex(item.color||'gray');
+    // Support both: nodes that reference a skill (itemId) and standalone canvas nodes (no itemId)
+    const item = node.itemId ? allItems.find(i=>i.id===node.itemId) : null;
+    // Build a display object from whichever source has the data
+    const displayName = node.label || (item ? item.name : node.name) || 'Unnamed';
+    const displayType = item ? item.type : (node.type || 'skill');
+    const displayColor = item ? item.color : (node.color || 'gray');
+    if(!item && !node.name) return ''; // skip truly orphaned nodes
+    const hex = colorHex(displayColor);
     const size = node.size || 60;
     const emojiSize = Math.round(size * 0.4);
     // Ports sit exactly on the icon box border (the 3px bordered square)
@@ -251,7 +256,7 @@ function renderNodes(map){
     return `<div class="map-node" id="mn_${node.id}" style="left:${node.x}px;top:${node.y}px;position:absolute;pointer-events:auto;background:transparent;border:none;padding:0;min-width:0;max-width:none;box-shadow:none;border-radius:0;cursor:default;display:flex;flex-direction:column;align-items:center;" onclick="selectNode('${node.id}')">
       <div class="map-node-iconbox" style="position:relative;width:${size}px;height:${size}px;">
         <div style="position:absolute;top:0;left:0;width:${size}px;height:${size}px;background:#FFFFFF;color:#666;border:3px solid ${hex};display:flex;align-items:center;justify-content:center;font-size:${emojiSize}px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.1);box-sizing:border-box;cursor:move;" onmousedown="startNodeDrag(event,'${node.id}')">
-          ${getEmojiForType(item.type || 'skill')}
+          ${getEmojiForType(displayType)}
         </div>
         <div class="map-node-del" style="position:absolute;top:-8px;right:-8px;width:18px;height:18px;background:#FF4444;color:white;border-radius:50%;cursor:pointer;z-index:40;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;line-height:1;box-shadow:0 1px 4px rgba(0,0,0,0.2);" onclick="removeNodeFromMap('${node.id}')" title="Remove from map">×</div>
         <div class="map-port" style="${portStyle}top:-6px;left:${halfSize-6}px;" onmousedown="startConnect(event,'${node.id}','top')" title="Connect"></div>
@@ -260,8 +265,8 @@ function renderNodes(map){
         <div class="map-port" style="${portStyle}right:-6px;top:${halfSize-6}px;" onmousedown="startConnect(event,'${node.id}','right')" title="Connect"></div>
         <div class="map-resize" style="position:absolute;bottom:-6px;right:-6px;width:14px;height:14px;background:${hex};border-radius:50%;cursor:nwse-resize;z-index:30;display:flex;align-items:center;justify-content:center;" onmousedown="startResize(event,'${node.id}')" title="Resize"><span style="color:white;font-size:8px;">⤡</span></div>
       </div>
-      <div class="map-node-label" data-node-id="${node.id}" style="font-size:13px;margin-top:8px;text-align:center;max-width:${Math.max(size,90)}px;font-weight:500;cursor:text;pointer-events:auto;border-radius:4px;padding:1px 4px;outline:none;" ondblclick="startInlineEdit(event,'${node.id}')" title="Double-click to rename">${esc(node.label || item.name)}</div>
-      <div style="font-size:11px;text-align:center;color:#999;">${item.type}</div>
+      <div class="map-node-label" data-node-id="${node.id}" style="font-size:13px;margin-top:8px;text-align:center;max-width:${Math.max(size,90)}px;font-weight:500;cursor:text;pointer-events:auto;border-radius:4px;padding:1px 4px;outline:none;" ondblclick="startInlineEdit(event,'${node.id}')" title="Double-click to rename">${esc(displayName)}</div>
+      <div style="font-size:11px;text-align:center;color:#999;">${displayType}</div>
     </div>`;
   }).join('');
 }
@@ -363,6 +368,7 @@ let connectStart = null;
 
 // Copy-paste state
 let copiedNodeId = null;
+let _copiedNode = null;
 
 // Multi-select state
 let _selectedNodeIds = new Set();
@@ -507,63 +513,23 @@ function confirmCreateItem(){
   const type = document.getElementById('modal-type').value;
   const color = document.getElementById('modal-color').value;
   
-  // Create item
-  const item = {
-    id: 'skill_'+Date.now(),
-    name: name,
-    type: type,
-    color: color,
-    icon: 'ti-puzzle',
-    archived: false
-  };
-  
-  // Add to S.personal
-  if(typeof S === 'undefined' || !S) return;
-  if(!S.personal) S.personal = [];
-  S.personal.push(item);
-  
-  // Save to localStorage
-  localStorage.setItem('sb_skills_v2', JSON.stringify(S));
-  
-  // POST directly to Supabase as a new record (saveP only patches existing records)
-  if(typeof sbFetch === 'function'){
-    const row = {
-      id: item.id,
-      type: item.type,
-      name: item.name,
-      author: (typeof S !== 'undefined' && S.personal[0] && S.personal[0].author) || 'User',
-      color: item.color,
-      icon: item.icon || 'ti-puzzle',
-      description: '',
-      prompt: '',
-      notes: '',
-      archived: false,
-      runs: [],
-      connected_skills: [],
-      updated_at: new Date().toISOString()
-    };
-    sbFetch('skills', {
-      method: 'POST',
-      headers: {'Prefer': 'return=representation'},
-      body: JSON.stringify(row)
-    }).then(async r => {
-      const text = await r.text();
-      console.log('[CREATE] Supabase POST status:', r.status, text);
-      if(!r.ok) console.error('[CREATE] FAILED to save to Supabase:', text);
-      else console.log('[CREATE] Successfully saved to Supabase!');
-    }).catch(e => console.error('[CREATE] Supabase error:', e));
-  }
-  
-  // Add to map
+  // Store everything directly on the node — no skill created, no Supabase, no sidebar
   const col = map.nodes.length % 3;
   const row = Math.floor(map.nodes.length / 3);
   const x = 50 + col * 200;
   const y = 50 + row * 120;
   
-  map.nodes.push({id:'n_'+Date.now(), itemId: item.id, x, y});
+  pushUndo();
+  map.nodes.push({
+    id: 'n_'+Date.now(),
+    itemId: null,        // no skill reference
+    name: name,          // stored directly on node
+    type: type,
+    color: color,
+    x, y
+  });
   saveMaps();
   
-  // Close modal and render
   document.getElementById('create-item-modal').remove();
   renderMapCanvas();
 }
@@ -645,10 +611,16 @@ function startInlineEdit(event, nodeId){
           const allItems = [...(S.personal||[]),...(S.shared||[])].filter(i=>!i.archived);
           const item = allItems.find(i=>i.id===node.itemId);
           const newName = el.textContent.trim();
-          if(newName === '' || (item && newName === item.name)){
-            delete node.label;
+          if(node.itemId){
+            // Skill-referenced node: store as label override
+            if(newName === '' || (item && newName === item.name)){
+              delete node.label;
+            } else {
+              node.label = newName;
+            }
           } else {
-            node.label = newName;
+            // Standalone canvas node: store directly as node.name
+            node.name = newName || node.name;
           }
           saveMaps();
         }
@@ -707,7 +679,7 @@ function cleanupOrphanedNodes(){
   const allItems = [...(S.personal||[]),...(S.shared||[])].filter(i=>!i.archived);
   const validIds = new Set(allItems.map(i=>i.id));
   const before = map.nodes.length;
-  map.nodes = map.nodes.filter(node => validIds.has(node.itemId));
+  map.nodes = map.nodes.filter(node => !node.itemId || validIds.has(node.itemId));
   const removed = before - map.nodes.length;
   saveMaps();
   renderMapCanvas();
@@ -743,6 +715,7 @@ function copySelectedNode(){
   const node = map.nodes.find(n => n.id === _selectedNodeId);
   if(!node) return;
   copiedNodeId = node.itemId;
+  _copiedNode = {...node}; // store full node data for standalone node support
   // Brief visual feedback - flash green
   _selectedNodeIds.forEach(nid => {
     const el = document.getElementById('mn_' + nid);
@@ -761,7 +734,9 @@ function pasteCopiedNode(){
   const x = lastNode ? lastNode.x + 80 : 100;
   const y = lastNode ? lastNode.y + 80 : 100;
   
-  map.nodes.push({ id: 'n_' + Date.now(), itemId: copiedNodeId, x, y });
+  map.nodes.push({ id: 'n_' + Date.now(), itemId: _copiedNode.itemId||null,
+    name: _copiedNode.name, type: _copiedNode.type, color: _copiedNode.color,
+    label: _copiedNode.label, size: _copiedNode.size, x, y });
   saveMaps();
   renderMapCanvas();
   
