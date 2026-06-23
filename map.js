@@ -707,7 +707,7 @@ function deleteConnection(edgeIndex){
   const fromItem = allItems.find(i=>i.id===fromNode?.itemId);
   const toItem = allItems.find(i=>i.id===toNode?.itemId);
   
-  const confirm_delete = confirm(`Delete connection from "${fromItem?.name || 'Node'}" to "${toItem?.name || 'Node'"?`);
+  const confirm_delete = confirm(`Delete connection from "${fromItem?.name || 'Node'}" to "${toItem?.name || 'Node'}"?`);
   
   if(!confirm_delete) return;
   
