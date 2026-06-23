@@ -3594,7 +3594,7 @@ function renderMain(){
     'color:'+(active?'var(--ts-navy)':'var(--text-secondary)')+';transition:all .12s;';
 
   const tabBar =
-    '<div style="display:flex;gap:8px;padding:10px 14px;border-bottom:1.5px solid var(--border-mid);background:var(--bg-panel);flex-shrink:0;">'+
+    '<div style="display:flex;gap:8px;padding:10px 14px;border-bottom:1.5px solid var(--border-mid);background:#B8D8E8;flex-shrink:0;">'+
       '<button onclick="switchViewMode(\'map\')" style="'+tabStyle(viewMode==='map')+'"><i class="ti ti-map-2" style="font-size:13px;"></i> Map</button>'+
       '<button onclick="switchViewMode(\'skills\')" style="'+tabStyle(viewMode==='skills')+'"><i class="ti ti-books" style="font-size:13px;"></i> Skills</button>'+
     '</div>';
