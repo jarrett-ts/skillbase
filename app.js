@@ -30,6 +30,50 @@ function iconEl(icon,color,size){const bg=colorHex(color);return`<div class="ite
 function esc(t){return(t||'').replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>');}
 function timeAgo(ts){if(!ts)return'';const d=Math.floor((Date.now()-ts)/1000);if(d<60)return'just now';if(d<3600)return Math.floor(d/60)+'m ago';if(d<86400)return Math.floor(d/3600)+'h ago';return Math.floor(d/86400)+'d ago';}
 function initials(n){return(n||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();}
+
+function renderPrompt(prompt){
+  if(!prompt) return '';
+  let text = prompt;
+  // Strip YAML frontmatter (--- ... ---)
+  text = text.replace(/^---[\s\S]*?---\n?/, '');
+  // Escape HTML
+  const e = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // Convert markdown to basic HTML
+  const lines = text.split('\n');
+  let html = '';
+  let inList = false;
+  for(let line of lines){
+    const l = line.trimEnd();
+    if(l.startsWith('### ')){
+      if(inList){html+='</ul>';inList=false;}
+      html += '<h4 style="margin:14px 0 4px;font-size:12px;font-weight:700;color:#4A2080;text-transform:uppercase;letter-spacing:.06em;">'+e(l.slice(4))+'</h4>';
+    } else if(l.startsWith('## ')){
+      if(inList){html+='</ul>';inList=false;}
+      html += '<h3 style="margin:16px 0 5px;font-size:13px;font-weight:700;color:#1a2b4a;border-bottom:1px solid #e0e0e0;padding-bottom:4px;">'+e(l.slice(3))+'</h3>';
+    } else if(l.startsWith('# ')){
+      if(inList){html+='</ul>';inList=false;}
+      html += '<h2 style="margin:0 0 8px;font-size:15px;font-weight:700;color:#1a2b4a;">'+e(l.slice(2))+'</h2>';
+    } else if(l.startsWith('- ') || l.startsWith('* ')){
+      if(!inList){html+='<ul style="margin:4px 0;padding-left:18px;">';inList=true;}
+      let item = e(l.slice(2));
+      item = item.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+      item = item.replace(/`(.+?)`/g,'<code style="background:#f0f0f0;padding:1px 4px;border-radius:3px;font-size:11px;">$1</code>');
+      html += '<li style="margin:2px 0;font-size:12px;color:#333;">'+item+'</li>';
+    } else {
+      if(inList){html+='</ul>';inList=false;}
+      if(l === '' || l === '---'){
+        html += '<div style="height:6px;"></div>';
+      } else {
+        let p = e(l);
+        p = p.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+        p = p.replace(/`(.+?)`/g,'<code style="background:#f0f0f0;padding:1px 4px;border-radius:3px;font-size:11px;">$1</code>');
+        html += '<p style="margin:3px 0;font-size:12px;color:#333;line-height:1.6;">'+p+'</p>';
+      }
+    }
+  }
+  if(inList) html += '</ul>';
+  return html;
+}
 function fullDate(ts){return ts?new Date(ts).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'-';}
 function toggleSidebar(){sidebarOpen=!sidebarOpen;const sb=document.getElementById('sidebar');sb.className='sidebar '+(sidebarOpen?'expanded':'collapsed');if(sidebarOpen){let w=240;try{const s=localStorage.getItem('sb_sidebar_w');if(s)w=parseInt(s,10)||240;}catch(e){}sb.style.width=w+'px';}else{sb.style.width='0px';}}
 function toggleMenu(){menuOpen=!menuOpen;const m=document.getElementById('action-menu');if(m)m.className='menu-dropdown '+(menuOpen?'open':'');if(menuOpen)setTimeout(()=>document.addEventListener('click',closeMenu,{once:true}),0);}
@@ -3545,7 +3589,7 @@ function renderMain(){
       </div>
       <div id="kb-section-body" class="section-body ${kbOpen?'expanded':'collapsed'}">
       <div class="main-scroll">
-        <div class="prompt-text">${esc(item.prompt)}</div>
+        <div class="prompt-text">${renderPrompt(item.prompt)}</div>
         <div class="skills-section">
           <div style="padding:7px 12px;font-size:10px;font-weight:700;color:#0E6E5C;text-transform:uppercase;letter-spacing:.08em;display:flex;align-items:center;justify-content:space-between;border-bottom:1.5px solid var(--border-mid);">
             <div style="display:flex;align-items:center;gap:6px;"><i class="ti ti-plug" style="font-size:12px"></i> Connected skills</div>
