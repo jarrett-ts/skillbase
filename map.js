@@ -379,12 +379,14 @@ function renderEdges(map){
     const p1 = getPortPos(fromNode, fromPort);
     const p2 = getPortPos(toNode, toPort);
     
-    // No backoff — tip lands exactly on the port dot
+    // Tip lands directly on port — no gap
     let endX = p2.x, endY = p2.y;
     
-    // Bezier curve control points
+    // Bezier using total distance for consistent arrival angle
     const dx = Math.abs(p2.x - p1.x);
-    const offset = Math.max(40, dx/2);
+    const dy = Math.abs(p2.y - p1.y);
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    const offset = Math.max(50, dist * 0.4);
     let c1x = p1.x, c1y = p1.y, c2x = endX, c2y = endY;
     if(fromPort==='right'){ c1x = p1.x + offset; }
     else if(fromPort==='left'){ c1x = p1.x - offset; }
