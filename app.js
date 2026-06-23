@@ -3585,18 +3585,8 @@ function renderMain(){
           '<button class="menu-item danger" onclick="archiveItem(\''+item.id+'\',\''+S.selLib+'\');closeMenu()"><i class="ti ti-archive" style="font-size:14px"></i> Archive</button>'+
         '</div>'+
       '</div>'+
-      '<div class="badge-stack" style="flex-shrink:0;">'+
-        '<span class="badge b-'+item.type+'">'+item.type+'</span>'+
-        '<span class="badge '+(isPersonal?'b-personal':'b-shared')+'">'+(isPersonal?'mine':'team')+'</span>'+
-      '</div>'+
-      '<div class="item-icon-lg" style="background:'+hex+'18;color:'+hex+';border:1.5px solid '+hex+'40;flex-shrink:0;" onclick="openPicker()">'+
-        '<i class="ti '+(item.icon||'ti-puzzle')+'" style="font-size:14px;"></i>'+
-      '</div>'+
-      '<span class="topbar-title" style="flex:1;min-width:0;">'+esc(item.name)+'</span>'+
-      '<div style="display:flex;gap:8px;margin-left:auto;">'+
-        '<button onclick="switchViewMode(\'map\')" style="'+tabStyle(viewMode==='map')+'"><i class="ti ti-map-2" style="font-size:13px;"></i> Map</button>'+
-        '<button onclick="switchViewMode(\'skills\')" style="'+tabStyle(viewMode==='skills')+'"><i class="ti ti-books" style="font-size:13px;"></i> Skills</button>'+
-      '</div>'+
+      '<button onclick="switchViewMode(\'map\')" style="'+tabStyle(viewMode==='map')+'"><i class="ti ti-map-2" style="font-size:13px;"></i> Map</button>'+
+      '<button onclick="switchViewMode(\'skills\')" style="'+tabStyle(viewMode==='skills')+'"><i class="ti ti-books" style="font-size:13px;"></i> Skills</button>'+
     '</div>';
 
   const mapBody = '<div id="map-canvas-wrap" class="map-canvas-wrap"></div>';
@@ -3830,7 +3820,7 @@ function showCtxMenu(e, itemId) {
   const item = allItems().find(i=>i.id===itemId);
   if(!item) return;
   const currentFolder = getItemFolder(itemId);
-  const foldersAvail = folders.filter(f=>f.id!==(currentFolder&&currentFolder.id));
+  const foldersAvail = folders.filter(f=>f.id!==(currentFolder&¤tFolder.id));
   
   const menu = document.createElement('div');
   menu.className = 'ctx-menu';
