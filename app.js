@@ -3830,7 +3830,7 @@ function showCtxMenu(e, itemId) {
   const item = allItems().find(i=>i.id===itemId);
   if(!item) return;
   const currentFolder = getItemFolder(itemId);
-  const foldersAvail = folders.filter(f=>f.id!==(currentFolder&¤tFolder.id));
+  const foldersAvail = folders.filter(f=>f.id!==(currentFolder&&currentFolder.id));
   
   const menu = document.createElement('div');
   menu.className = 'ctx-menu';
