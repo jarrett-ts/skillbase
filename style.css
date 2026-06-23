@@ -303,7 +303,7 @@ canvas#map-canvas{position:absolute;top:0;left:0;width:100%;height:100%;}
 .test-notes-section{background:white;border-top:0.5px solid var(--border-mid);display:flex;flex-direction:column;flex-shrink:0;transition:all 0.2s;}
 .test-notes-section.collapsed{min-height:32px;}
 .test-notes-section.expanded{min-height:140px;}
-.test-notes-header{padding:8px 12px;background:var(--bg-surface);border-bottom:0.5px solid var(--border-mid);font-weight:500;font-size:13px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;flex-shrink:0;}
+.test-notes-header{padding:8px 12px;background:#B8D8E8;border-bottom:0.5px solid var(--border-mid);font-weight:500;font-size:13px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;flex-shrink:0;color:#2a5570;}
 .test-notes-header:hover{background:var(--bg-hover);}
 .test-notes-body{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:12px;}
 .test-field{display:flex;flex-direction:column;gap:4px;flex:1;}
