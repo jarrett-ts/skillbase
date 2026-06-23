@@ -1,50 +1,8 @@
-// ── COLOR HEX MAPPING (safe fallback) ──────────────────────────────────────
-// Use global COLORS if available, otherwise use fallback
-function colorHex(c){
-  // Try to use global COLORS if it exists (from app.js)
-  if(typeof COLORS !== 'undefined'){
-    return COLORS[c] || COLORS.gray;
-  }
-  // Fallback color map if COLORS not available
-  const localColors = {
-    'blue': '#00B4D8',
-    'purple': '#7209B7',
-    'teal': '#00D9FF',
-    'pink': '#FF006E',
-    'orange': '#FB5607',
-    'green': '#06A77D',
-    'gray': '#A0AEC0'
-  };
-  return localColors[c] || localColors.gray;
-}
-
 // ── MAP CANVAS ─────────────────────────────────────────────────────────────
 const MAP_KEY = 'sb_maps_v1';
 let maps = [];          // [{id, name, nodes:[{id,itemId,x,y}], edges:[{from,to}]}]
 let activeMapId = null;
 let mapSectionOpen = false;
-
-// ── AUTOSAVE & ERROR HANDLING ──────────────────────────────────────────────
-let lastAutoSaveTime = Date.now();
-const AUTOSAVE_INTERVAL = 10000; // 10 seconds
-
-// Autosave maps regularly
-setInterval(() => {
-  if(maps.length > 0 && Date.now() - lastAutoSaveTime > AUTOSAVE_INTERVAL){
-    try {
-      localStorage.setItem(MAP_KEY, JSON.stringify(maps));
-      console.log('✓ Maps autosaved');
-      lastAutoSaveTime = Date.now();
-    }catch(e){
-      console.error('Autosave failed:', e);
-    }
-  }
-}, AUTOSAVE_INTERVAL);
-
-function markMapModified(){
-  lastAutoSaveTime = 0; // Force save on next interval
-}
-
 
 // canvas interaction state
 let canvasNodes = [];   // rendered nodes for active map
@@ -87,13 +45,7 @@ function loadMaps(){
   renderMapList();
 }
 function saveMaps(){
-  try { 
-    localStorage.setItem(MAP_KEY, JSON.stringify(maps));
-    markMapModified();
-    console.log('✓ Map saved');
-  } catch(e){
-    console.error('Failed to save maps:', e);
-  }
+  try { localStorage.setItem(MAP_KEY, JSON.stringify(maps)); } catch(e){}
 }
 function getActiveMap(){ return maps.find(m=>m.id===activeMapId)||null; }
 
@@ -155,64 +107,25 @@ function renderMapList(){
 
 // ── ADD SKILL TO MAP (ALLOW MULTIPLE INSTANCES) ────────────────────────────
 function addItemToMap(itemId){
-  try {
-    console.log('🔵 addItemToMap called with:', itemId);
-    console.log('   mapSectionOpen:', mapSectionOpen);
-    console.log('   activeMapId:', activeMapId);
-    
-    if(!mapSectionOpen) { 
-      console.log('❌ Map section not open');
-      return;
-    }
-    
-    const map = getActiveMap();
-    if(!map) { 
-      console.error('No active map. activeMapId =', activeMapId);
-      alert('Create a map first'); 
-      return; 
-    }
-    
-    console.log('Adding to map:', map.name);
-    
-    const item = [...S.personal, ...S.shared].find(i=>i.id===itemId);
-    if(!item) { 
-      console.error('Item not found in S.personal or S.shared:', itemId); 
-      return; 
-    }
-    
-    console.log('Found item:', item.name);
-    
-    // NOW ALLOWS MULTIPLE INSTANCES OF SAME SKILL!
-    // place in a grid-ish pattern
-    const col = map.nodes.length % 3;
-    const row = Math.floor(map.nodes.length / 3);
-    const x = 40 + col * 200;
-    const y = 40 + row * 120;
-    
-    pushUndo();
-    map.nodes.push({id:'n_'+Date.now(), itemId, x, y});
-    console.log(`✓ Added "${item.name}" to map. Total nodes: ${map.nodes.length}`);
-    
-    saveMaps();
-    renderMapCanvas();
-    enableEdgeDeletion();
-    enableNodeResize();
-    
-  } catch(e) {
-    console.error('Error adding item to map:', e);
-  }
+  if(!mapSectionOpen) return;
+  const map = getActiveMap();
+  if(!map) { alert('Create a map first'); return; }
+  // NOW ALLOWS MULTIPLE INSTANCES OF SAME SKILL!
+  // place in a grid-ish pattern
+  const col = map.nodes.length % 3;
+  const row = Math.floor(map.nodes.length / 3);
+  const x = 40 + col * 200;
+  const y = 40 + row * 120;
+  pushUndo();
+  map.nodes.push({id:'n_'+Date.now(), itemId, x, y});
+  saveMaps();
+  renderMapCanvas();
 }
 
 // ── CREATE NEW SKILL DIRECTLY ON CANVAS ────────────────────────────────────
 function createSkillOnCanvas(){
-  console.log('🔵 createSkillOnCanvas called');
   const map = getActiveMap();
-  if(!map) { 
-    console.error('❌ No active map');
-    alert('Create a map first'); 
-    return; 
-  }
-  console.log('✓ Active map found:', map.name);
+  if(!map) { alert('Create a map first'); return; }
   
   // Show modal dialog to create a new skill
   const modalHTML = `
@@ -361,28 +274,12 @@ function closeCreateSkillModal(){
 }
 
 function confirmCreateSkillOnCanvas(){
-  console.log('🔵 confirmCreateSkillOnCanvas called');
-  const nameEl = document.getElementById('create-skill-name');
-  const typeEl = document.getElementById('create-skill-type');
-  const colorEl = document.getElementById('create-skill-color');
-  const descEl = document.getElementById('create-skill-desc');
-  
-  console.log('Form elements found:', {
-    name: !!nameEl,
-    type: !!typeEl,
-    color: !!colorEl,
-    desc: !!descEl
-  });
-  
-  const name = nameEl ? nameEl.value.trim() : '';
-  const type = typeEl ? typeEl.value : '';
-  const color = colorEl ? colorEl.value : '';
-  const description = descEl ? descEl.value.trim() : '';
-  
-  console.log('Form values:', { name, type, color, description });
+  const name = document.getElementById('create-skill-name').value.trim();
+  const type = document.getElementById('create-skill-type').value;
+  const color = document.getElementById('create-skill-color').value;
+  const description = document.getElementById('create-skill-desc').value.trim();
   
   if(!name){
-    console.error('❌ No name provided');
     alert('Please enter a skill name');
     return;
   }
@@ -426,28 +323,12 @@ function confirmCreateSkillOnCanvas(){
   const y = 40 + row * 120;
   
   pushUndo();
-  console.log('📍 About to add to map. newItem:', newItem);
-  console.log('📍 Map.nodes before:', map.nodes.length);
-  try {
-    map.nodes.push({id:'n_'+Date.now(), itemId: newItem.id, x, y});
-    console.log(`✓ Created new item "${name}" (${type}). Total items: ${map.nodes.length}`);
-    console.log('✓ Node added successfully');
-  } catch(e) {
-    console.error('❌ Error creating item on map:', e);
-  }
-  console.log('💾 About to save maps');
+  map.nodes.push({id:'n_'+Date.now(), itemId: newItem.id, x, y});
   saveMaps();
-  console.log('✓ Maps saved');
   
   // Update skill list and re-render
-  console.log('🎨 Re-rendering UI');
-  if(typeof renderSkillsUI === 'function') { 
-    console.log('✓ renderSkillsUI called');
-    renderSkillsUI(); 
-  }
-  console.log('🎨 Re-rendering canvas');
+  if(typeof renderSkillsUI === 'function') renderSkillsUI();
   renderMapCanvas();
-  console.log('✓ Canvas rendered');
 }
 
 // ── CANVAS RENDER ───────────────────────────────────────────────────────────
@@ -462,21 +343,32 @@ const typeEmojis = {
   'default': '⚙️'
 };
 
+
+// ── SAFE COLOR HEX FUNCTION ────────────────────────────────────────────
+function colorHex(c){
+  if(typeof COLORS !== 'undefined'){
+    return COLORS[c] || COLORS.gray;
+  }
+  const fallback = {
+    'blue': '#00B4D8', 'purple': '#7209B7', 'teal': '#00D9FF',
+    'pink': '#FF006E', 'orange': '#FB5607', 'green': '#06A77D', 'gray': '#A0AEC0'
+  };
+  return fallback[c] || fallback.gray;
+}
+
 function getEmojiForType(type){
   return typeEmojis[type] || typeEmojis['default'];
 }
 
 function renderMapCanvas(){
   const wrap = document.getElementById('map-canvas-wrap');
-  if(!wrap) { console.warn('Map canvas wrap not found'); return; }
+  if(!wrap) return;
   const map = getActiveMap();
   if(!map){
     wrap.innerHTML = `<div class="map-empty-msg">No map selected</div><div class="map-empty-hint">Create a map using the Maps section in the sidebar</div>`;
     wrap.classList.add('empty-state');
-    console.log('No active map');
     return;
   }
-  console.log('Rendering map:', map.name);
   wrap.classList.remove('empty-state');
 
   const isEmpty = map.nodes.length===0;
@@ -484,7 +376,6 @@ function renderMapCanvas(){
     <div class="map-toolbar">
       <button class="map-tool-btn" id="map-undo-btn" onclick="undoMap()" title="Undo (Cmd/Ctrl+Z)"><i class="ti ti-arrow-back-up" style="font-size:12px"></i> Undo</button>
       <button class="map-tool-btn" onclick="createSkillOnCanvas()" title="Create new item on map"><i class="ti ti-circle-plus" style="font-size:12px"></i> Create Item</button>
-      <button class="map-tool-btn" onclick="saveMaps(); alert('✓ Map saved!');" title="Save map to browser storage"><i class="ti ti-device-floppy" style="font-size:12px"></i></button>
       <span class="map-hint" style="font-size:11px;color:var(--text-muted);background:rgba(255,255,255,.85);padding:5px 9px;border-radius:7px;border:1px solid var(--border-mid);">Drag a side dot → another card to connect</span>
       <button class="map-tool-btn" onclick="clearMapEdges()" title="Clear connections"><i class="ti ti-eraser" style="font-size:12px"></i></button>
       <button class="map-tool-btn" onclick="clearMap()" title="Clear all"><i class="ti ti-trash" style="font-size:12px"></i> Clear</button>
@@ -503,13 +394,8 @@ function renderMapCanvas(){
   renderNodes(map);
   renderEdges(map);
   updateUndoBtn();
-  
-  // Setup interactivity
-  setTimeout(() => {
-    enableEdgeDeletion();
-    enableNodeResize();
-    setupNodeResize();
-  }, 100);
+  enableEdgeDeletion();
+  enableNodeResize();
 }
 
 function initMapResize(handle, wrap){
@@ -546,18 +432,12 @@ function initMapResize(handle, wrap){
 
 function renderNodes(map){
   const layer = document.getElementById('map-nodes-layer');
-  if(!layer) { console.error('❌ map-nodes-layer not found'); return; }
+  if(!layer) return;
   const allItems = [...S.personal,...S.shared].filter(i=>!i.archived);
-  console.log('📍 renderNodes: ' + map.nodes.length + ' nodes to render');
-  layer.innerHTML = map.nodes.map((node, idx)=>{
+  layer.innerHTML = map.nodes.map(node=>{
     const item = allItems.find(i=>i.id===node.itemId);
-    if(!item) { 
-      console.warn('⚠️  Node ' + idx + ' item not found: ' + node.itemId); 
-      return ''; 
-    }
-    try {
-      const hex = colorHex(item.color||'gray');
-      console.log('✓ Node ' + idx + ': ' + item.name + ' (color: ' + hex + ')');
+    if(!item) return '';
+    const hex = colorHex(item.color||'gray');
     const badgeClass = 'b-'+item.type;
     return `<div class="map-node" id="mn_${node.id}"
       style="left:${node.x}px;top:${node.y}px;"
@@ -978,37 +858,6 @@ function setupNodeResize(){
 function enableNodeResize(){
   loadIconSizes();
   setTimeout(() => setupNodeResize(), 50);
-}
-
-
-
-// ── TOGGLE MAP SECTION VISIBILITY ──────────────────────────────────────────
-function toggleMapSection(elementId){
-  const elem = document.getElementById(elementId);
-  const chevron = document.getElementById('map-section-chevron');
-  
-  if(elem){
-    if(elem.classList.contains('collapsed')){
-      elem.classList.remove('collapsed');
-      elem.classList.add('expanded');
-      mapSectionOpen = true;
-      console.log('Map section opened');
-    } else {
-      elem.classList.add('collapsed');
-      elem.classList.remove('expanded');
-      mapSectionOpen = false;
-      console.log('Map section closed');
-    }
-  }
-  
-  if(chevron){
-    chevron.classList.toggle('open');
-  }
-  
-  // Re-render if a map is active
-  if(activeMapId && mapSectionOpen){
-    renderMapCanvas();
-  }
 }
 
 
