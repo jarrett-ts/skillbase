@@ -3603,7 +3603,7 @@ function renderMain(){
   const bodyContent = (viewMode === 'map') ? mapBody : mainContent;
 
   const tnHeader =
-    '<div onclick="toggleTestNotesSection()" style="padding:9px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;'+(testNotesCollapsed?'':'border-bottom:1.5px solid var(--border-mid);')+'">'+
+    '<div onclick="toggleTestNotesSection()" style="padding:9px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:700;color:#fff;background:#1a2b4a;text-transform:uppercase;letter-spacing:.08em;">'+
       '<span><i class="ti ti-flask" style="font-size:12px;"></i> Test &middot; Notes</span>'+
       '<i class="ti ti-chevron-'+(testNotesCollapsed?'up':'down')+'" style="font-size:14px;"></i>'+
     '</div>';
