@@ -2,7 +2,8 @@
 const MAP_KEY = 'sb_maps_v1';
 let maps = [];
 let activeMapId = null;
-let mapSectionOpen = false;
+// window.mapSectionOpen is shared with app.js via window
+if(typeof window.mapSectionOpen === 'undefined') window.mapSectionOpen = false;
 
 // ── UNDO ─────────────────────────────────────────────────────────────────────
 let undoStack = [];
@@ -83,7 +84,7 @@ function newMap(){
   activeMapId = id;
   saveMaps();
   renderMapList();
-  if(mapSectionOpen) renderMapCanvas();
+  if(window.mapSectionOpen) renderMapCanvas();
 }
 
 function deleteMap(id, e){
@@ -94,13 +95,13 @@ function deleteMap(id, e){
   if(activeMapId===id) activeMapId = maps.length ? maps[0].id : null;
   saveMaps();
   renderMapList();
-  if(mapSectionOpen) renderMapCanvas();
+  if(window.mapSectionOpen) renderMapCanvas();
 }
 
 function selectMap(id){
   activeMapId = id;
   renderMapList();
-  if(mapSectionOpen) renderMapCanvas();
+  if(window.mapSectionOpen) renderMapCanvas();
 }
 
 function renderMapList(){
@@ -508,6 +509,8 @@ function openCreateItemModal(){
 function confirmCreateItem(){
   // If no active map, try selecting the first one
   if(!activeMapId && maps.length) activeMapId = maps[0].id;
+  // Also ensure mapSectionOpen is true if canvas is visible
+  if(document.getElementById('map-canvas-wrap')) window.mapSectionOpen = true;
   const map = getActiveMap();
   if(!map) { alert('No map available. Create a map first.'); return; }
   
@@ -539,7 +542,7 @@ function confirmCreateItem(){
 }
 
 function addItemToMap(itemId){
-  if(!mapSectionOpen) return;
+  if(!window.mapSectionOpen) return;
   const map = getActiveMap();
   if(!map) return;
   
@@ -657,8 +660,8 @@ function removeNodeFromMap(nodeId){
 function toggleMapSection(id){
   const elem = document.getElementById(id);
   if(!elem) return;
-  mapSectionOpen = !mapSectionOpen;
-  if(mapSectionOpen){
+  window.mapSectionOpen = !window.mapSectionOpen;
+  if(window.mapSectionOpen){
     elem.classList.remove('collapsed');
     elem.classList.add('expanded');
     if(activeMapId) renderMapCanvas();
@@ -820,12 +823,11 @@ function installMarquee(){
     // Check if click is inside a canvas wrap
     const wrap = e.target.closest('.map-canvas-wrap');
     if(!wrap) return;
-    // Don't start marquee if clicking on interactive elements
-    // Use element coordinates to check if over a node
+    // Don't start marquee if clicking on toolbar
     if(e.target.closest('.map-toolbar')) return;
-    // Check if any node contains this point by looking at map data
-    const map = getActiveMap();
-    if(map && isPointOverNode(e.clientX, e.clientY, wrap, map)) return;
+    // Temporarily check if click lands on a node by checking DOM elements
+    const els = document.elementsFromPoint(e.clientX, e.clientY);
+    if(els.some(el => el.classList && el.classList.contains('map-node'))) return;
 
     const rect = wrap.getBoundingClientRect();
     _marqueeStartX = e.clientX - rect.left;
