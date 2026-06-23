@@ -53,24 +53,25 @@ function getEmojiForType(type){
 
 // ── SAFE COLOR HEX FUNCTION ────────────────────────────────────────────────
 function colorHex(c){
-  // Full color map that works regardless of global COLORS
+  // Check app.js COLORS object first (for sidebar-dragged skills)
+  if(typeof COLORS !== 'undefined' && COLORS[c]) return COLORS[c];
+  // Full fallback map for all colors including map-only ones
   const allColors = {
-    // App.js native colors
     'navy': '#1E3570', 'teal': '#0E6E5C', 'purple': '#4A2080',
     'coral': '#C44A20', 'amber': '#B87800', 'gray': '#4A5060',
     'blue': '#2952A3', 'pink': '#982060',
-    // Map dropdown colors
     'maroon': '#8B2252', 'green': '#2D9E5F', 'orange': '#E07020',
   };
-  return allColors[c] || allColors['gray'];
+  return allColors[c] || '#4A5060';
 }
 
 function loadMaps(){
   try { window.maps = JSON.parse(localStorage.getItem(MAP_KEY)||'[]'); } catch(e){ window.maps=[]; }
   if(!window.activeMapId && window.maps.length) window.activeMapId = window.maps[0].id;
   renderMapList();
-  // Install marquee selection once
   installMarquee();
+  // Small delay to let DOM settle before attaching resize
+  setTimeout(setupMapResize, 100);
 }
 
 function saveMaps(){
@@ -701,6 +702,47 @@ function toggleMapsSection(){
   const isOpen=body.style.maxHeight!=='0px'&&body.style.maxHeight!=='';
   body.style.maxHeight=isOpen?'0px':'500px';
   if(chevron)chevron.style.transform=isOpen?'rotate(180deg)':'rotate(0deg)';
+}
+
+function setupMapResize(){
+  const handle = document.getElementById('map-section-resizer');
+  if(!handle || handle._resizeAttached) return;
+  handle._resizeAttached = true;
+
+  let startY = 0, startMapsH = 0, startListH = 0;
+  const getMapSection = () => document.querySelector('.maps-section');
+  const getItemList = () => document.getElementById('item-list');
+
+  handle.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    const mapSection = getMapSection();
+    const itemList = getItemList();
+    if(!mapSection || !itemList) return;
+    startY = e.clientY;
+    startMapsH = mapSection.getBoundingClientRect().height;
+    startListH = itemList.getBoundingClientRect().height;
+    handle.classList.add('dragging');
+
+    const onMove = (e) => {
+      const dy = startY - e.clientY; // drag up = increase maps height
+      const newMapsH = Math.max(60, Math.min(500, startMapsH + dy));
+      const newListH = Math.max(60, startListH - dy);
+      mapSection.style.height = newMapsH + 'px';
+      mapSection.style.maxHeight = 'none';
+      mapSection.style.flexShrink = '0';
+      itemList.style.maxHeight = newListH + 'px';
+      itemList.style.flex = 'none';
+    };
+
+    const onUp = () => {
+      handle.classList.remove('dragging');
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
 }
 
 function addMapFolder(){
