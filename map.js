@@ -1,9 +1,12 @@
 // ── MAP CANVAS ──────────────────────────────────────────────────────────────
 const MAP_KEY = 'sb_maps_v1';
-let maps = [];
-let activeMapId = null;
-// window.mapSectionOpen is shared with app.js via window
+// All map state on window so functions can access them across contexts
+if(!window.maps) window.maps = [];
+if(!window.activeMapId) window.activeMapId = null;
 if(typeof window.mapSectionOpen === 'undefined') window.mapSectionOpen = false;
+
+// Shorthands (local references point to window properties)
+Object.defineProperty(window, '_mapsProxy', {value: true, configurable: true});
 
 // ── UNDO ─────────────────────────────────────────────────────────────────────
 let undoStack = [];
@@ -63,25 +66,25 @@ function colorHex(c){
 }
 
 function loadMaps(){
-  try { maps = JSON.parse(localStorage.getItem(MAP_KEY)||'[]'); } catch(e){ maps=[]; }
-  if(!activeMapId && maps.length) activeMapId = maps[0].id;
+  try { window.maps = JSON.parse(localStorage.getItem(MAP_KEY)||'[]'); } catch(e){ window.maps=[]; }
+  if(!window.activeMapId && window.maps.length) window.activeMapId = window.maps[0].id;
   renderMapList();
   // Install marquee selection once
   installMarquee();
 }
 
 function saveMaps(){
-  try { localStorage.setItem(MAP_KEY, JSON.stringify(maps)); } catch(e){}
+  try { localStorage.setItem(MAP_KEY, JSON.stringify(window.maps)); } catch(e){}
 }
 
-function getActiveMap(){ return maps.find(m=>m.id===activeMapId)||null; }
+function getActiveMap(){ return window.maps.find(m=>m.id===window.activeMapId)||null; }
 
 function newMap(){
   const name = prompt('Map name:','Untitled map');
   if(!name) return;
   const id = 'map_'+Date.now();
-  maps.push({id, name, nodes:[], edges:[]});
-  activeMapId = id;
+  window.maps.push({id, name, nodes:[], edges:[]});
+  window.activeMapId = id;
   saveMaps();
   renderMapList();
   if(window.mapSectionOpen) renderMapCanvas();
@@ -89,17 +92,17 @@ function newMap(){
 
 function deleteMap(id, e){
   e.stopPropagation();
-  const m = maps.find(x=>x.id===id);
+  const m = window.maps.find(x=>x.id===id);
   if(!m||!confirm('Delete map "'+m.name+'"?')) return;
-  maps = maps.filter(x=>x.id!==id);
-  if(activeMapId===id) activeMapId = maps.length ? maps[0].id : null;
+  window.maps = window.maps.filter(x=>x.id!==id);
+  if(window.activeMapId===id) window.activeMapId = window.maps.length ? window.maps[0].id : null;
   saveMaps();
   renderMapList();
   if(window.mapSectionOpen) renderMapCanvas();
 }
 
 function selectMap(id){
-  activeMapId = id;
+  window.activeMapId = id;
   renderMapList();
   if(window.mapSectionOpen) renderMapCanvas();
 }
@@ -107,8 +110,8 @@ function selectMap(id){
 function renderMapList(){
   const list = document.getElementById('map-list');
   if(!list) return;
-  list.innerHTML = maps.map(m=>`
-    <div class="map-item ${m.id===activeMapId?'active':''}" onclick="selectMap('${m.id}')">
+  list.innerHTML = window.maps.map(m=>`
+    <div class="map-item ${m.id===window.activeMapId?'active':''}" onclick="selectMap('${m.id}')">
       <span>${esc(m.name)}</span>
       <button onclick="deleteMap('${m.id}',event)" title="Delete"><i class="ti ti-trash" style="font-size:11px"></i></button>
     </div>
@@ -255,7 +258,7 @@ function renderNodes(map){
     const portStyle = 'position:absolute;width:12px;height:12px;background:#fff;border:2px solid '+hex+';border-radius:50%;cursor:crosshair;z-index:30;';
     const halfSize = size/2;
     // The iconbox IS the bordered square - ports on its edges
-    const isSelected = _selectedNodeIds.has(node.id);
+    const isSelected = window._selectedNodeIds.has(node.id);
     return `<div class="map-node" id="mn_${node.id}" style="left:${node.x}px;top:${node.y}px;position:absolute;pointer-events:auto;background:transparent;border:none;padding:0;min-width:0;max-width:none;box-shadow:none;border-radius:0;cursor:default;display:flex;flex-direction:column;align-items:center;" onclick="selectNode('${node.id}')">
       <div class="map-node-iconbox" style="position:relative;width:${size}px;height:${size}px;">
         <div style="position:absolute;top:0;left:0;width:${size}px;height:${size}px;background:#FFFFFF;color:#666;border:3px solid ${hex};display:flex;align-items:center;justify-content:center;font-size:${emojiSize}px;border-radius:6px;box-shadow:${isSelected ? '0 0 0 3px #00B4D8, 0 2px 8px rgba(0,0,0,0.1)' : '0 2px 8px rgba(0,0,0,0.1)'};box-sizing:border-box;cursor:move;outline:${isSelected ? '2px dashed #00B4D8' : 'none'};outline-offset:3px;" onmousedown="startNodeDrag(event,'${node.id}')">
@@ -373,8 +376,8 @@ let connectStart = null;
 let copiedNodeId = null;
 let _copiedNode = null;
 
-// Multi-select state
-let _selectedNodeIds = new Set();
+// Multi-select state  
+if(!window._selectedNodeIds) window._selectedNodeIds = new Set();
 let _marqueeActive = false;
 
 function startConnect(event, nodeId, port){
@@ -508,7 +511,7 @@ function openCreateItemModal(){
 
 function confirmCreateItem(){
   // If no active map, try selecting the first one
-  if(!activeMapId && maps.length) activeMapId = maps[0].id;
+  if(!window.activeMapId && window.maps.length) window.activeMapId = window.maps[0].id;
   // Also ensure mapSectionOpen is true if canvas is visible
   if(document.getElementById('map-canvas-wrap')) window.mapSectionOpen = true;
   const map = getActiveMap();
@@ -664,7 +667,7 @@ function toggleMapSection(id){
   if(window.mapSectionOpen){
     elem.classList.remove('collapsed');
     elem.classList.add('expanded');
-    if(activeMapId) renderMapCanvas();
+    if(window.activeMapId) renderMapCanvas();
   } else {
     elem.classList.add('collapsed');
     elem.classList.remove('expanded');
@@ -696,16 +699,16 @@ function cleanupOrphanedNodes(){
 }
 
 // ── COPY / PASTE ───────────────────────────────────────────────────────────
-let _selectedNodeId = null;
+if(typeof window._selectedNodeId === 'undefined') window._selectedNodeId = null;
 
 function selectNode(nodeId, addToSelection=false){
   if(!addToSelection){
-    _selectedNodeId = nodeId;
-    _selectedNodeIds.clear();
-    _selectedNodeIds.add(nodeId);
+    window._selectedNodeId = nodeId;
+    window._selectedNodeIds.clear();
+    window._selectedNodeIds.add(nodeId);
   } else {
-    _selectedNodeIds.add(nodeId);
-    _selectedNodeId = nodeId;
+    window._selectedNodeIds.add(nodeId);
+    window._selectedNodeId = nodeId;
   }
   highlightSelected();
 }
@@ -717,15 +720,15 @@ function highlightSelected(){
 }
 
 function copySelectedNode(){
-  if(!_selectedNodeId) return;
+  if(!window._selectedNodeId) return;
   const map = getActiveMap();
   if(!map) return;
-  const node = map.nodes.find(n => n.id === _selectedNodeId);
+  const node = map.nodes.find(n => n.id === window._selectedNodeId);
   if(!node) return;
   copiedNodeId = node.itemId;
   _copiedNode = {...node}; // store full node data for standalone node support
   // Brief visual feedback - flash green
-  _selectedNodeIds.forEach(nid => {
+  window._selectedNodeIds.forEach(nid => {
     const el = document.getElementById('mn_' + nid);
     if(el){ el.style.outline = '2px dashed #06A77D'; setTimeout(()=>{ if(el) el.style.outline = '2px dashed #00B4D8'; }, 400); }
   });
@@ -775,22 +778,22 @@ document.addEventListener('keydown', (e) => {
   } else if((e.ctrlKey || e.metaKey) && e.key === 'v'){
     e.preventDefault();
     pasteCopiedNode();
-  } else if((e.key === 'Delete' || e.key === 'Backspace') && _selectedNodeIds.size > 0){
+  } else if((e.key === 'Delete' || e.key === 'Backspace') && window._selectedNodeIds.size > 0){
     e.preventDefault();
     const map = getActiveMap();
-    if(map && _selectedNodeIds.size > 0){
+    if(map && window._selectedNodeIds.size > 0){
       pushUndo();
       // Remove selected nodes
-      map.nodes = map.nodes.filter(n => !_selectedNodeIds.has(n.id));
+      map.nodes = map.nodes.filter(n => !window._selectedNodeIds.has(n.id));
       // Remove any edges connected to deleted nodes
       map.edges = (map.edges||[]).filter(edge =>
-        !_selectedNodeIds.has(edge.from) && !_selectedNodeIds.has(edge.to)
+        !window._selectedNodeIds.has(edge.from) && !window._selectedNodeIds.has(edge.to)
       );
       saveMaps();
       renderMapCanvas();
     }
-    _selectedNodeId = null;
-    _selectedNodeIds.clear();
+    window._selectedNodeId = null;
+    window._selectedNodeIds.clear();
   }
 });
 
@@ -800,9 +803,9 @@ document.addEventListener('click', (e) => {
   if(!wrap) return; // only care about clicks inside canvas
   const map = getActiveMap();
   if(map && !isPointOverNode(e.clientX, e.clientY, wrap, map) && !e.target.closest('.map-toolbar')){
-    if(_selectedNodeIds.size > 0){
-      _selectedNodeId = null;
-      _selectedNodeIds.clear();
+    if(window._selectedNodeIds.size > 0){
+      window._selectedNodeId = null;
+      window._selectedNodeIds.clear();
       renderNodes(map);
     }
   }
@@ -874,16 +877,16 @@ function installMarquee(){
 
         // Only select if actually dragged a meaningful distance (lowered threshold)
         if(selW > 4 || selH > 4){
-          _selectedNodeIds.clear();
-          _selectedNodeId = null;
+          window._selectedNodeIds.clear();
+          window._selectedNodeId = null;
           const map = getActiveMap();
           if(map){
             map.nodes.forEach(node => {
               const sz = node.size || 60;
               if(node.x < selX + selW && node.x + sz > selX &&
                  node.y < selY + selH && node.y + sz > selY){
-                _selectedNodeIds.add(node.id);
-                _selectedNodeId = node.id;
+                window._selectedNodeIds.add(node.id);
+                window._selectedNodeId = node.id;
               }
             });
           }
