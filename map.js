@@ -258,7 +258,7 @@ function renderNodes(map){
     const size = node.size || 60;
     const emojiSize = Math.round(size * 0.4);
     // Ports sit exactly on the icon box border (the 3px bordered square)
-    const portStyle = 'position:absolute;width:12px;height:12px;background:#fff;border:2px solid '+hex+';border-radius:50%;cursor:crosshair;z-index:30;';
+    const portStyle = 'position:absolute;width:12px;height:12px;background:#fff;border:2px solid '+hex+';border-radius:50%;cursor:crosshair;z-index:30;opacity:0;transition:opacity .15s;';
     const halfSize = size/2;
     // The iconbox IS the bordered square - ports on its edges
     const isSelected = window._selectedNodeIds.has(node.id);
