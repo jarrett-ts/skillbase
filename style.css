@@ -15,7 +15,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 #app{display:flex;height:100vh;overflow:hidden;}
 
 /* â”€â”€ Sidebar â”€â”€ */
-.sidebar{flex-shrink:0;background:#B8D8E8;border-right:1.5px solid var(--border-mid);display:flex;flex-direction:column;overflow:hidden;transition:width .2s ease;position:relative;}
+.sidebar{flex-shrink:0;background:#D4E8F0;border-right:1.5px solid var(--border-mid);display:flex;flex-direction:column;overflow:hidden;transition:width .2s ease;position:relative;}
 .sidebar.expanded{width:var(--sidebar-w,240px);min-width:180px;max-width:380px;}
 .sidebar.collapsed{width:0;border-right:none;}
 .sidebar-inner{width:100%;min-width:180px;display:flex;flex-direction:column;height:100%;overflow:hidden;}
