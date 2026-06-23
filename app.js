@@ -3470,7 +3470,7 @@ function toggleTestNotesSection() {
 function renderMain(){
   const item=getSelected();if(!item)return;
   const viewMode=window.currentViewMode||'map';
-  const testNotesCollapsed=window.testNotesCollapsed||false;
+  const testNotesCollapsed=window.testNotesCollapsed==null?true:window.testNotesCollapsed;
   const isPersonal=S.selLib==='personal';
   const hex=colorHex(item.color||'gray');
   document.getElementById('topbar').innerHTML=`
