@@ -263,7 +263,14 @@ function renderEdges(map){
   const svg = document.getElementById('map-svg');
   if(!svg) return;
   
-  svg.innerHTML = (map.edges||[]).map((edge, idx)=>{
+  // Arrow marker definition (defined once in defs)
+  const defs = `<defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+      <polygon points="0 0, 10 4, 0 8" fill="#94a3b8"></polygon>
+    </marker>
+  </defs>`;
+  
+  svg.innerHTML = defs + (map.edges||[]).map((edge, idx)=>{
     const fromNode = map.nodes.find(n=>n.id===edge.from);
     const toNode = map.nodes.find(n=>n.id===edge.to);
     if(!fromNode || !toNode) return '';
@@ -288,22 +295,30 @@ function renderEdges(map){
     const p1 = getPortPos(fromNode, fromPort);
     const p2 = getPortPos(toNode, toPort);
     
+    // Pull the arrow endpoint back slightly so the arrowhead tip sits right at the port
+    const backoff = 6;
+    let endX = p2.x, endY = p2.y;
+    if(toPort==='right'){ endX = p2.x + backoff; }
+    else if(toPort==='left'){ endX = p2.x - backoff; }
+    else if(toPort==='top'){ endY = p2.y - backoff; }
+    else if(toPort==='bottom'){ endY = p2.y + backoff; }
+    
     // Bezier curve control points
     const dx = Math.abs(p2.x - p1.x);
     const offset = Math.max(40, dx/2);
-    let c1x = p1.x, c1y = p1.y, c2x = p2.x, c2y = p2.y;
+    let c1x = p1.x, c1y = p1.y, c2x = endX, c2y = endY;
     if(fromPort==='right'){ c1x = p1.x + offset; }
     else if(fromPort==='left'){ c1x = p1.x - offset; }
     else if(fromPort==='top'){ c1y = p1.y - offset; }
     else if(fromPort==='bottom'){ c1y = p1.y + offset; }
-    if(toPort==='right'){ c2x = p2.x + offset; }
-    else if(toPort==='left'){ c2x = p2.x - offset; }
-    else if(toPort==='top'){ c2y = p2.y - offset; }
-    else if(toPort==='bottom'){ c2y = p2.y + offset; }
+    if(toPort==='right'){ c2x = endX + offset; }
+    else if(toPort==='left'){ c2x = endX - offset; }
+    else if(toPort==='top'){ c2y = endY - offset; }
+    else if(toPort==='bottom'){ c2y = endY + offset; }
     
-    const path = `M ${p1.x} ${p1.y} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${p2.x} ${p2.y}`;
+    const path = `M ${p1.x} ${p1.y} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${endX} ${endY}`;
     return `<g>
-      <path d="${path}" stroke="#94a3b8" stroke-width="2.5" fill="none" style="pointer-events:stroke;cursor:pointer;" onclick="deleteEdge(${idx})"></path>
+      <path d="${path}" stroke="#94a3b8" stroke-width="2.5" fill="none" marker-end="url(#arrowhead)" style="pointer-events:stroke;cursor:pointer;" onclick="deleteEdge(${idx})"></path>
       <path d="${path}" stroke="transparent" stroke-width="12" fill="none" style="pointer-events:stroke;cursor:pointer;" onclick="deleteEdge(${idx})"></path>
     </g>`;
   }).join('');
