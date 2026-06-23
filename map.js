@@ -214,7 +214,7 @@ function renderNodes(map){
     const portStyle = 'position:absolute;width:12px;height:12px;background:#fff;border:2px solid '+hex+';border-radius:50%;cursor:crosshair;z-index:30;';
     const halfSize = size/2;
     // The iconbox IS the bordered square - ports on its edges
-    return `<div class="map-node" id="mn_${node.id}" style="left:${node.x}px;top:${node.y}px;position:absolute;pointer-events:auto;background:transparent;border:none;padding:0;min-width:0;max-width:none;box-shadow:none;border-radius:0;cursor:default;display:flex;flex-direction:column;align-items:center;">
+    return `<div class="map-node" id="mn_${node.id}" style="left:${node.x}px;top:${node.y}px;position:absolute;pointer-events:auto;background:transparent;border:none;padding:0;min-width:0;max-width:none;box-shadow:none;border-radius:0;cursor:default;display:flex;flex-direction:column;align-items:center;" onclick="selectNode('${node.id}')">
       <div class="map-node-iconbox" style="position:relative;width:${size}px;height:${size}px;">
         <div style="position:absolute;top:0;left:0;width:${size}px;height:${size}px;background:#FFFFFF;color:#666;border:3px solid ${hex};display:flex;align-items:center;justify-content:center;font-size:${emojiSize}px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.1);box-sizing:border-box;cursor:move;" onmousedown="startNodeDrag(event,'${node.id}')">
           ${getEmojiForType(item.type || 'skill')}
@@ -326,6 +326,9 @@ function renderEdges(map){
 
 // Connection state
 let connectStart = null;
+
+// Copy-paste state
+let copiedNodeId = null;
 
 function startConnect(event, nodeId, port){
   event.preventDefault();
@@ -669,6 +672,81 @@ function cleanupOrphanedNodes(){
   renderMapCanvas();
   alert('Removed ' + removed + ' orphaned items. ' + map.nodes.length + ' valid items remain.');
 }
+
+// ── COPY / PASTE ───────────────────────────────────────────────────────────
+let _selectedNodeId = null;
+
+function selectNode(nodeId){
+  _selectedNodeId = nodeId;
+  // Highlight selected node
+  document.querySelectorAll('.map-node').forEach(el => {
+    el.style.outline = '';
+  });
+  const el = document.getElementById('mn_' + nodeId);
+  if(el) el.style.outline = '2px dashed #00B4D8';
+}
+
+function copySelectedNode(){
+  if(!_selectedNodeId) return;
+  const map = getActiveMap();
+  if(!map) return;
+  const node = map.nodes.find(n => n.id === _selectedNodeId);
+  if(!node) return;
+  copiedNodeId = node.itemId;
+  console.log('Copied node:', copiedNodeId);
+  // Brief visual feedback
+  const el = document.getElementById('mn_' + _selectedNodeId);
+  if(el){ el.style.outline = '2px dashed #06A77D'; setTimeout(()=>{ if(el) el.style.outline = '2px dashed #00B4D8'; }, 400); }
+}
+
+function pasteCopiedNode(){
+  if(!copiedNodeId) return;
+  const map = getActiveMap();
+  if(!map) return;
+  
+  // Find the last node with this itemId to offset from it
+  const existingNodes = map.nodes.filter(n => n.itemId === copiedNodeId);
+  const lastNode = existingNodes[existingNodes.length - 1];
+  const x = lastNode ? lastNode.x + 80 : 100;
+  const y = lastNode ? lastNode.y + 80 : 100;
+  
+  map.nodes.push({ id: 'n_' + Date.now(), itemId: copiedNodeId, x, y });
+  saveMaps();
+  renderMapCanvas();
+  
+  // Auto-select the new node
+  const newNode = map.nodes[map.nodes.length - 1];
+  setTimeout(() => selectNode(newNode.id), 50);
+}
+
+// Keyboard shortcuts: Ctrl+C to copy, Ctrl+V to paste, Delete/Backspace to remove selected
+document.addEventListener('keydown', (e) => {
+  // Don't fire if user is typing in an input/contenteditable
+  const tag = document.activeElement && document.activeElement.tagName;
+  const isEditing = tag === 'INPUT' || tag === 'TEXTAREA' || 
+    document.activeElement.isContentEditable;
+  if(isEditing) return;
+  
+  if((e.ctrlKey || e.metaKey) && e.key === 'c'){
+    copySelectedNode();
+  } else if((e.ctrlKey || e.metaKey) && e.key === 'v'){
+    e.preventDefault();
+    pasteCopiedNode();
+  } else if((e.key === 'Delete' || e.key === 'Backspace') && _selectedNodeId){
+    e.preventDefault();
+    removeNodeFromMap(_selectedNodeId);
+    _selectedNodeId = null;
+    copiedNodeId = null;
+  }
+});
+
+// Clear selection when clicking canvas background
+document.addEventListener('click', (e) => {
+  if(!e.target.closest('.map-node')){
+    _selectedNodeId = null;
+    document.querySelectorAll('.map-node').forEach(el => el.style.outline = '');
+  }
+});
 
 function esc(s){
   if(s === null || s === undefined) return '';
