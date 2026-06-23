@@ -271,7 +271,7 @@ function renderNodes(map){
         <div class="map-port" style="${portStyle}right:-6px;top:${halfSize-6}px;" onmousedown="startConnect(event,'${node.id}','right')" title="Connect"></div>
         <div class="map-resize" style="position:absolute;bottom:-6px;right:-6px;width:14px;height:14px;background:${hex};border-radius:50%;cursor:nwse-resize;z-index:30;display:flex;align-items:center;justify-content:center;" onmousedown="startResize(event,'${node.id}')" title="Resize"><span style="color:white;font-size:8px;">⤡</span></div>
       </div>
-      <div class="map-node-label" data-node-id="${node.id}" style="font-size:13px;margin-top:8px;text-align:center;max-width:${Math.max(size,90)}px;font-weight:500;cursor:text;pointer-events:auto;border-radius:4px;padding:1px 4px;outline:none;" ondblclick="startInlineEdit(event,'${node.id}')" title="Double-click to rename">${esc(displayName)}</div>
+      <div class="map-node-label" data-node-id="${node.id}" style="font-size:13px;margin-top:8px;text-align:center;max-width:${Math.max(size,90)}px;font-weight:500;cursor:text;pointer-events:auto;border-radius:4px;padding:1px 4px;outline:none;" onclick="event.stopPropagation()" ondblclick="startInlineEdit(event,'${node.id}')" title="Double-click to rename">${esc(displayName)}</div>
       <div style="font-size:11px;text-align:center;color:#999;">${displayType}</div>
     </div>`;
   }).join('');
@@ -897,7 +897,7 @@ function installMarquee(){
         const selH = Math.abs(curY - _marqueeStartY);
 
         // Only select if actually dragged a meaningful distance (lowered threshold)
-        if(selW > 4 || selH > 4){
+        if(selW > 10 && selH > 10){
           window._selectedNodeIds.clear();
           window._selectedNodeId = null;
           const map = getActiveMap();
