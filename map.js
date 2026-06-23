@@ -363,6 +363,8 @@ function renderMapCanvas(){
   renderNodes(map);
   renderEdges(map);
   updateUndoBtn();
+  enableEdgeDeletion();
+  enableNodeResize();
 }
 
 function initMapResize(handle, wrap){
@@ -660,6 +662,171 @@ function toggleMapSection(bodyId){
   const chevron = el.previousElementSibling && el.previousElementSibling.querySelector('.section-chevron');
   if(chevron) chevron.classList.toggle('open', mapSectionOpen);
   if(mapSectionOpen) renderMapCanvas();
+}
+
+
+
+// ── DELETE INDIVIDUAL CONNECTION LINES (NEW) ──────────────────────────────
+
+// Show delete buttons on hover over connections
+let hoveredEdgeIndex = null;
+
+function setupEdgeHover(){
+  const svg = document.getElementById('map-svg');
+  if(!svg) return;
+  
+  // Add click handlers to paths for deleting edges
+  const paths = svg.querySelectorAll('path');
+  paths.forEach((path, index) => {
+    path.style.cursor = 'pointer';
+    path.addEventListener('mouseenter', () => {
+      hoveredEdgeIndex = index;
+      path.style.strokeWidth = '2.5';
+      path.style.strokeOpacity = '0.8';
+    });
+    path.addEventListener('mouseleave', () => {
+      hoveredEdgeIndex = null;
+      path.style.strokeWidth = '1.5';
+      path.style.strokeOpacity = '0.5';
+    });
+    path.addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteConnection(index);
+    });
+  });
+}
+
+function deleteConnection(edgeIndex){
+  const map = getActiveMap();
+  if(!map || edgeIndex >= map.edges.length) return;
+  
+  const edge = map.edges[edgeIndex];
+  const fromNode = map.nodes.find(n=>n.id===edge.from);
+  const toNode = map.nodes.find(n=>n.id===edge.to);
+  const allItems = [...S.personal,...S.shared].filter(i=>!i.archived);
+  const fromItem = allItems.find(i=>i.id===fromNode?.itemId);
+  const toItem = allItems.find(i=>i.id===toNode?.itemId);
+  
+  const confirm_delete = confirm(`Delete connection from "${fromItem?.name || 'Node'}" to "${toItem?.name || 'Node'"?`);
+  
+  if(!confirm_delete) return;
+  
+  pushUndo();
+  map.edges.splice(edgeIndex, 1);
+  saveMaps();
+  renderEdges(map);
+  enableEdgeDeletion();
+}
+
+function enableEdgeDeletion(){
+  setTimeout(() => setupEdgeHover(), 50);
+}
+
+
+// ── RESIZE SKILL ICONS (NEW) ──────────────────────────────────────────────
+
+let nodeIconSizes = {};
+
+function loadIconSizes(){
+  try{
+    const saved = localStorage.getItem('sb_node_icon_sizes');
+    if(saved) nodeIconSizes = JSON.parse(saved);
+  }catch(e){}
+}
+
+function saveIconSizes(){
+  try{
+    localStorage.setItem('sb_node_icon_sizes', JSON.stringify(nodeIconSizes));
+  }catch(e){}
+}
+
+function setupNodeResize(){
+  const layer = document.getElementById('map-nodes-layer');
+  if(!layer) return;
+  
+  const nodes = layer.querySelectorAll('.map-node');
+  nodes.forEach(nodeEl => {
+    if(nodeEl.querySelector('.map-node-resize-handle')) return; // Already has handle
+    
+    const resizeHandle = document.createElement('div');
+    resizeHandle.className = 'map-node-resize-handle';
+    resizeHandle.innerHTML = '⤡';
+    resizeHandle.title = 'Drag to resize card';
+    resizeHandle.style.cssText = `position:absolute;bottom:-8px;right:-8px;width:16px;height:16px;background:var(--ts-navy,#0F1B3F);color:white;border-radius:50%;cursor:se-resize;display:flex;align-items:center;justify-content:center;font-size:10px;z-index:10;user-select:none;`;
+    
+    nodeEl.style.position = 'absolute';
+    nodeEl.appendChild(resizeHandle);
+    
+    let resizing = false;
+    let startX = 0, startY = 0, startWidth = 80, startHeight = 60;
+    
+    resizeHandle.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      resizing = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      startWidth = nodeEl.offsetWidth;
+      startHeight = nodeEl.offsetHeight;
+      nodeEl.style.opacity = '0.7';
+      document.body.style.cursor = 'se-resize';
+      document.body.style.userSelect = 'none';
+      
+      const onMouseMove = (moveEvent) => {
+        if(!resizing) return;
+        const deltaX = moveEvent.clientX - startX;
+        const deltaY = moveEvent.clientY - startY;
+        const newWidth = Math.max(60, startWidth + deltaX);
+        const newHeight = Math.max(50, startHeight + deltaY);
+        nodeEl.style.width = newWidth + 'px';
+        nodeEl.style.height = newHeight + 'px';
+        const map = getActiveMap();
+        if(map) renderEdges(map);
+      };
+      
+      const onMouseUp = () => {
+        if(!resizing) return;
+        resizing = false;
+        nodeEl.style.opacity = '1';
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        const nodeId = nodeEl.id.replace('mn_', '');
+        nodeIconSizes[nodeId] = { width: nodeEl.offsetWidth, height: nodeEl.offsetHeight };
+        saveIconSizes();
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+        renderEdges(getActiveMap());
+      };
+      
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    });
+    
+    const nodeId = nodeEl.id.replace('mn_', '');
+    if(nodeIconSizes[nodeId]){
+      nodeEl.style.width = nodeIconSizes[nodeId].width + 'px';
+      nodeEl.style.height = nodeIconSizes[nodeId].height + 'px';
+    }
+    
+    nodeEl.addEventListener('wheel', (e) => {
+      if(e.ctrlKey || e.metaKey){
+        e.preventDefault();
+        const scaleFactor = e.deltaY > 0 ? 0.95 : 1.05;
+        const newWidth = Math.max(60, Math.min(250, nodeEl.offsetWidth * scaleFactor));
+        const newHeight = Math.max(50, Math.min(200, nodeEl.offsetHeight * scaleFactor));
+        nodeEl.style.width = newWidth + 'px';
+        nodeEl.style.height = newHeight + 'px';
+        const nodeId = nodeEl.id.replace('mn_', '');
+        nodeIconSizes[nodeId] = { width: newWidth, height: newHeight };
+        saveIconSizes();
+        renderEdges(getActiveMap());
+      }
+    });
+  });
+}
+
+function enableNodeResize(){
+  loadIconSizes();
+  setTimeout(() => setupNodeResize(), 50);
 }
 
 
