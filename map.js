@@ -92,6 +92,23 @@ function renderMapCanvas(){
   }
   wrap.classList.remove('empty-state');
   
+  // Enable drop from sidebar
+  wrap.ondragover = (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; };
+  wrap.ondrop = (e) => {
+    e.preventDefault();
+    const itemId = e.dataTransfer.getData('text/plain');
+    if(!itemId) return;
+    const m = getActiveMap();
+    if(!m) return;
+    const rect = wrap.getBoundingClientRect();
+    const x = e.clientX - rect.left - 30;
+    const y = e.clientY - rect.top - 30;
+    if(!m.nodes) m.nodes = [];
+    m.nodes.push({id:'n_'+Date.now(), itemId, x: Math.max(0,x), y: Math.max(0,y)});
+    saveMaps();
+    renderMapCanvas();
+  };
+  
   wrap.innerHTML = `
     <div class="map-toolbar">
       <button class="map-tool-btn" onclick="openCreateItemModal()" title="Create new item"><i class="ti ti-circle-plus"></i> Create Item</button>
@@ -122,19 +139,21 @@ function renderNodes(map){
     const hex = colorHex(item.color||'gray');
     const size = node.size || 60;
     const emojiSize = Math.round(size * 0.4);
-    // Ports positioned on the icon-box edges, centered
-    const portStyle = 'position:absolute;width:12px;height:12px;background:#fff;border:2px solid '+hex+';border-radius:50%;cursor:crosshair;z-index:20;';
+    // Ports sit exactly on the icon box border (the 3px bordered square)
+    const portStyle = 'position:absolute;width:12px;height:12px;background:#fff;border:2px solid '+hex+';border-radius:50%;cursor:crosshair;z-index:30;';
     const halfSize = size/2;
+    // The iconbox IS the bordered square - ports on its edges
     return `<div class="map-node" id="mn_${node.id}" style="left:${node.x}px;top:${node.y}px;position:absolute;">
-      <div class="map-node-iconbox" style="position:relative;width:${size}px;height:${size}px;cursor:move;" onmousedown="startNodeDrag(event,'${node.id}')">
-        <div style="width:${size}px;height:${size}px;background:#FFFFFF;color:#666;border:3px solid ${hex};display:flex;align-items:center;justify-content:center;font-size:${emojiSize}px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.1);box-sizing:border-box;">
+      <div class="map-node-iconbox" style="position:relative;width:${size}px;height:${size}px;">
+        <div style="position:absolute;top:0;left:0;width:${size}px;height:${size}px;background:#FFFFFF;color:#666;border:3px solid ${hex};display:flex;align-items:center;justify-content:center;font-size:${emojiSize}px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.1);box-sizing:border-box;cursor:move;" onmousedown="startNodeDrag(event,'${node.id}')">
           ${getEmojiForType(item.type || 'skill')}
         </div>
-        <div class="map-port" style="${portStyle}top:-7px;left:${halfSize-6}px;" onmousedown="startConnect(event,'${node.id}','top')" title="Connect"></div>
-        <div class="map-port" style="${portStyle}bottom:-7px;left:${halfSize-6}px;" onmousedown="startConnect(event,'${node.id}','bottom')" title="Connect"></div>
-        <div class="map-port" style="${portStyle}left:-7px;top:${halfSize-6}px;" onmousedown="startConnect(event,'${node.id}','left')" title="Connect"></div>
-        <div class="map-port" style="${portStyle}right:-7px;top:${halfSize-6}px;" onmousedown="startConnect(event,'${node.id}','right')" title="Connect"></div>
-        <div class="map-resize" style="position:absolute;bottom:-3px;right:-3px;width:14px;height:14px;background:${hex};border-radius:50%;cursor:nwse-resize;z-index:20;display:flex;align-items:center;justify-content:center;" onmousedown="startResize(event,'${node.id}')" title="Resize"><span style="color:white;font-size:8px;">⤡</span></div>
+        <div class="map-node-del" style="position:absolute;top:-8px;right:-8px;width:18px;height:18px;background:#FF4444;color:white;border-radius:50%;cursor:pointer;z-index:40;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;line-height:1;box-shadow:0 1px 4px rgba(0,0,0,0.2);" onclick="removeNodeFromMap('${node.id}')" title="Remove from map">×</div>
+        <div class="map-port" style="${portStyle}top:-6px;left:${halfSize-6}px;" onmousedown="startConnect(event,'${node.id}','top')" title="Connect"></div>
+        <div class="map-port" style="${portStyle}bottom:-6px;left:${halfSize-6}px;" onmousedown="startConnect(event,'${node.id}','bottom')" title="Connect"></div>
+        <div class="map-port" style="${portStyle}left:-6px;top:${halfSize-6}px;" onmousedown="startConnect(event,'${node.id}','left')" title="Connect"></div>
+        <div class="map-port" style="${portStyle}right:-6px;top:${halfSize-6}px;" onmousedown="startConnect(event,'${node.id}','right')" title="Connect"></div>
+        <div class="map-resize" style="position:absolute;bottom:-6px;right:-6px;width:14px;height:14px;background:${hex};border-radius:50%;cursor:nwse-resize;z-index:30;display:flex;align-items:center;justify-content:center;" onmousedown="startResize(event,'${node.id}')" title="Resize"><span style="color:white;font-size:8px;">⤡</span></div>
       </div>
       <div style="font-size:11px;margin-top:8px;text-align:center;max-width:${Math.max(size,80)}px;font-weight:500;">${esc(item.name)}</div>
       <div style="font-size:9px;text-align:center;color:#999;">${item.type}</div>
