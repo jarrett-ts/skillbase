@@ -92,11 +92,18 @@ function renderMapCanvas(){
   }
   wrap.classList.remove('empty-state');
   
-  // Enable drop from sidebar
-  wrap.ondragover = (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; };
-  wrap.ondrop = (e) => {
+  // Enable drop from sidebar (robust: handle events on wrap and bubbled from children)
+  wrap.addEventListener('dragenter', (e) => { e.preventDefault(); });
+  wrap.addEventListener('dragover', (e) => { e.preventDefault(); if(e.dataTransfer) e.dataTransfer.dropEffect = 'copy'; });
+  wrap.addEventListener('drop', (e) => {
     e.preventDefault();
-    const itemId = e.dataTransfer.getData('text/plain');
+    e.stopPropagation();
+    // Try dataTransfer first, fall back to global dragState from app.js
+    let itemId = '';
+    try { itemId = e.dataTransfer.getData('text/plain'); } catch(err) {}
+    if((!itemId) && typeof dragState !== 'undefined' && dragState && dragState.id){
+      itemId = dragState.id;
+    }
     if(!itemId) return;
     const m = getActiveMap();
     if(!m) return;
@@ -107,7 +114,7 @@ function renderMapCanvas(){
     m.nodes.push({id:'n_'+Date.now(), itemId, x: Math.max(0,x), y: Math.max(0,y)});
     saveMaps();
     renderMapCanvas();
-  };
+  });
   
   wrap.innerHTML = `
     <div class="map-toolbar">
