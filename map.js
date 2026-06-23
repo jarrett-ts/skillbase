@@ -117,7 +117,7 @@ function renderMapCanvas(){
       <button class="map-tool-btn" onclick="clearAllNodes()" title="Clear everything">Clear All</button>
     </div>
     <svg id="map-svg" style="position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible;"></svg>
-    <div id="map-nodes-layer" style="position:absolute;top:0;left:0;width:100%;height:100%;"></div>
+    <div id="map-nodes-layer" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;"></div>
   `;
   
   renderNodes(map);
@@ -143,7 +143,7 @@ function renderNodes(map){
     const portStyle = 'position:absolute;width:12px;height:12px;background:#fff;border:2px solid '+hex+';border-radius:50%;cursor:crosshair;z-index:30;';
     const halfSize = size/2;
     // The iconbox IS the bordered square - ports on its edges
-    return `<div class="map-node" id="mn_${node.id}" style="left:${node.x}px;top:${node.y}px;position:absolute;">
+    return `<div class="map-node" id="mn_${node.id}" style="left:${node.x}px;top:${node.y}px;position:absolute;pointer-events:auto;">
       <div class="map-node-iconbox" style="position:relative;width:${size}px;height:${size}px;">
         <div style="position:absolute;top:0;left:0;width:${size}px;height:${size}px;background:#FFFFFF;color:#666;border:3px solid ${hex};display:flex;align-items:center;justify-content:center;font-size:${emojiSize}px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.1);box-sizing:border-box;cursor:move;" onmousedown="startNodeDrag(event,'${node.id}')">
           ${getEmojiForType(item.type || 'skill')}
