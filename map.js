@@ -4,6 +4,35 @@ let maps = [];
 let activeMapId = null;
 let mapSectionOpen = false;
 
+// ── UNDO ─────────────────────────────────────────────────────────────────────
+let undoStack = [];
+const MAX_UNDO = 30;
+
+function pushUndo(){
+  const map = getActiveMap();
+  if(!map) return;
+  undoStack.push(JSON.stringify({nodes: map.nodes, edges: map.edges || []}));
+  if(undoStack.length > MAX_UNDO) undoStack.shift();
+  updateUndoBtn();
+}
+
+function undoMap(){
+  if(!undoStack.length) return;
+  const map = getActiveMap();
+  if(!map) return;
+  const prev = JSON.parse(undoStack.pop());
+  map.nodes = prev.nodes;
+  map.edges = prev.edges;
+  saveMaps();
+  renderMapCanvas();
+  updateUndoBtn();
+}
+
+function updateUndoBtn(){
+  const btn = document.getElementById('map-undo-btn');
+  if(btn) btn.disabled = undoStack.length === 0;
+}
+
 // ── TYPE TO EMOJI MAPPING ──────────────────────────────────────────────────
 const typeEmojis = {
   'output': '📦',
@@ -20,14 +49,16 @@ function getEmojiForType(type){
 
 // ── SAFE COLOR HEX FUNCTION ────────────────────────────────────────────────
 function colorHex(c){
-  if(typeof COLORS !== 'undefined'){
-    return COLORS[c] || COLORS.gray;
-  }
-  const fallback = {
-    'blue': '#00B4D8', 'purple': '#7209B7', 'teal': '#00D9FF',
-    'pink': '#FF006E', 'orange': '#FB5607', 'green': '#06A77D', 'gray': '#A0AEC0'
+  // Full color map that works regardless of global COLORS
+  const allColors = {
+    // App.js native colors
+    'navy': '#1E3570', 'teal': '#0E6E5C', 'purple': '#4A2080',
+    'coral': '#C44A20', 'amber': '#B87800', 'gray': '#4A5060',
+    'blue': '#2952A3', 'pink': '#982060',
+    // Our map-specific colors (renamed)
+    'maroon': '#982060', 'green': '#2D9E5F', 'orange': '#E07020',
   };
-  return fallback[c] || fallback.gray;
+  return allColors[c] || allColors['gray'];
 }
 
 function loadMaps(){
@@ -182,6 +213,7 @@ function renderMapCanvas(){
   
   wrap.innerHTML = `
     <div class="map-toolbar">
+      <button class="map-tool-btn" id="map-undo-btn" onclick="undoMap()" title="Undo (Cmd+Z)" disabled><i class="ti ti-arrow-back-up"></i> Undo</button>
       <button class="map-tool-btn" onclick="openCreateItemModal()" title="Create new item"><i class="ti ti-circle-plus"></i> Create Item</button>
       <button class="map-tool-btn" onclick="saveMaps(); alert('Saved!');" title="Save"><i class="ti ti-device-floppy"></i> Save</button>
       <button class="map-tool-btn" onclick="cleanupOrphanedNodes()" title="Remove broken items">Clean Up</button>
@@ -193,6 +225,8 @@ function renderMapCanvas(){
   
   renderNodes(map);
   renderEdges(map);
+  setupMarquee(wrap);
+  updateUndoBtn();
 }
 
 function renderNodes(map){
@@ -330,6 +364,10 @@ let connectStart = null;
 // Copy-paste state
 let copiedNodeId = null;
 
+// Multi-select state
+let _selectedNodeIds = new Set();
+let _marqueeActive = false;
+
 function startConnect(event, nodeId, port){
   event.preventDefault();
   event.stopPropagation();
@@ -401,6 +439,7 @@ function deleteEdge(idx){
   const map = getActiveMap();
   if(!map || !map.edges) return;
   if(!confirm('Delete this connection?')) return;
+  pushUndo();
   map.edges.splice(idx, 1);
   saveMaps();
   renderMapCanvas();
@@ -439,8 +478,8 @@ function openCreateItemModal(){
         <select id="modal-color" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;font-size:14px;">
           <option value="blue" selected>Blue</option>
           <option value="purple">Purple</option>
-          <option value="teal">Teal</option>
-          <option value="pink">Pink</option>
+          <option value="navy">Navy</option>
+          <option value="maroon">Maroon</option>
           <option value="orange">Orange</option>
           <option value="green">Green</option>
           <option value="gray">Gray</option>
@@ -539,6 +578,7 @@ function addItemToMap(itemId){
   const x = 50 + col * 200;
   const y = 50 + row * 120;
   
+  pushUndo();
   map.nodes.push({id:'n_'+Date.now(), itemId, x, y});
   saveMaps();
   renderMapCanvas();
@@ -630,6 +670,7 @@ function startInlineEdit(event, nodeId){
 function removeNodeFromMap(nodeId){
   const map = getActiveMap();
   if(!map) return;
+  pushUndo();
   map.nodes = map.nodes.filter(n=>n.id!==nodeId);
   saveMaps();
   renderMapCanvas();
@@ -676,14 +717,23 @@ function cleanupOrphanedNodes(){
 // ── COPY / PASTE ───────────────────────────────────────────────────────────
 let _selectedNodeId = null;
 
-function selectNode(nodeId){
-  _selectedNodeId = nodeId;
-  // Highlight selected node
+function selectNode(nodeId, addToSelection=false){
+  if(!addToSelection){
+    _selectedNodeId = nodeId;
+    _selectedNodeIds.clear();
+    _selectedNodeIds.add(nodeId);
+  } else {
+    _selectedNodeIds.add(nodeId);
+    _selectedNodeId = nodeId;
+  }
+  highlightSelected();
+}
+
+function highlightSelected(){
   document.querySelectorAll('.map-node').forEach(el => {
-    el.style.outline = '';
+    const nid = el.id.replace('mn_','');
+    el.style.outline = _selectedNodeIds.has(nid) ? '2px dashed #00B4D8' : '';
   });
-  const el = document.getElementById('mn_' + nodeId);
-  if(el) el.style.outline = '2px dashed #00B4D8';
 }
 
 function copySelectedNode(){
@@ -693,10 +743,11 @@ function copySelectedNode(){
   const node = map.nodes.find(n => n.id === _selectedNodeId);
   if(!node) return;
   copiedNodeId = node.itemId;
-  console.log('Copied node:', copiedNodeId);
-  // Brief visual feedback
-  const el = document.getElementById('mn_' + _selectedNodeId);
-  if(el){ el.style.outline = '2px dashed #06A77D'; setTimeout(()=>{ if(el) el.style.outline = '2px dashed #00B4D8'; }, 400); }
+  // Brief visual feedback - flash green
+  _selectedNodeIds.forEach(nid => {
+    const el = document.getElementById('mn_' + nid);
+    if(el){ el.style.outline = '2px dashed #06A77D'; setTimeout(()=>{ if(el) el.style.outline = '2px dashed #00B4D8'; }, 400); }
+  });
 }
 
 function pasteCopiedNode(){
@@ -727,16 +778,25 @@ document.addEventListener('keydown', (e) => {
     document.activeElement.isContentEditable;
   if(isEditing) return;
   
-  if((e.ctrlKey || e.metaKey) && e.key === 'c'){
+  if((e.ctrlKey || e.metaKey) && e.key === 'z'){
+    e.preventDefault();
+    undoMap();
+  } else if((e.ctrlKey || e.metaKey) && e.key === 'c'){
     copySelectedNode();
   } else if((e.ctrlKey || e.metaKey) && e.key === 'v'){
     e.preventDefault();
     pasteCopiedNode();
-  } else if((e.key === 'Delete' || e.key === 'Backspace') && _selectedNodeId){
+  } else if((e.key === 'Delete' || e.key === 'Backspace') && _selectedNodeIds.size > 0){
     e.preventDefault();
-    removeNodeFromMap(_selectedNodeId);
+    const map = getActiveMap();
+    if(map && _selectedNodeIds.size > 0){
+      pushUndo();
+      map.nodes = map.nodes.filter(n => !_selectedNodeIds.has(n.id));
+      saveMaps();
+      renderMapCanvas();
+    }
     _selectedNodeId = null;
-    copiedNodeId = null;
+    _selectedNodeIds.clear();
   }
 });
 
@@ -744,9 +804,81 @@ document.addEventListener('keydown', (e) => {
 document.addEventListener('click', (e) => {
   if(!e.target.closest('.map-node')){
     _selectedNodeId = null;
+    _selectedNodeIds.clear();
     document.querySelectorAll('.map-node').forEach(el => el.style.outline = '');
   }
 });
+
+// ── MARQUEE SELECTION ────────────────────────────────────────────────────────
+function setupMarquee(wrap){
+  let marqueeEl = null;
+  let startX = 0, startY = 0;
+
+  wrap.addEventListener('mousedown', (e) => {
+    // Only start marquee on empty canvas area (not on nodes/buttons/ports)
+    if(e.target.closest('.map-node') || e.target.closest('.map-toolbar') || 
+       e.target.closest('.map-port') || e.target.closest('.map-resize')) return;
+    if(e.button !== 0) return;
+
+    const rect = wrap.getBoundingClientRect();
+    startX = e.clientX - rect.left;
+    startY = e.clientY - rect.top;
+    _marqueeActive = true;
+
+    marqueeEl = document.createElement('div');
+    marqueeEl.style.cssText = `position:absolute;border:2px dashed #00B4D8;background:rgba(0,180,216,0.08);pointer-events:none;z-index:1000;left:${startX}px;top:${startY}px;width:0;height:0;`;
+    wrap.appendChild(marqueeEl);
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if(!_marqueeActive || !marqueeEl) return;
+    const rect = wrap.getBoundingClientRect();
+    const curX = e.clientX - rect.left;
+    const curY = e.clientY - rect.top;
+    const x = Math.min(startX, curX);
+    const y = Math.min(startY, curY);
+    const w = Math.abs(curX - startX);
+    const h = Math.abs(curY - startY);
+    marqueeEl.style.left = x + 'px';
+    marqueeEl.style.top = y + 'px';
+    marqueeEl.style.width = w + 'px';
+    marqueeEl.style.height = h + 'px';
+  });
+
+  document.addEventListener('mouseup', (e) => {
+    if(!_marqueeActive || !marqueeEl) return;
+    _marqueeActive = false;
+
+    const rect = wrap.getBoundingClientRect();
+    const curX = e.clientX - rect.left;
+    const curY = e.clientY - rect.top;
+    const selX = Math.min(startX, curX);
+    const selY = Math.min(startY, curY);
+    const selW = Math.abs(curX - startX);
+    const selH = Math.abs(curY - startY);
+
+    // Only select if dragged a meaningful distance
+    if(selW > 5 || selH > 5){
+      _selectedNodeIds.clear();
+      const map = getActiveMap();
+      if(map){
+        map.nodes.forEach(node => {
+          const sz = node.size || 60;
+          const nx = node.x, ny = node.y;
+          // Check if node overlaps with selection rectangle
+          if(nx < selX + selW && nx + sz > selX && ny < selY + selH && ny + sz > selY){
+            _selectedNodeIds.add(node.id);
+            _selectedNodeId = node.id;
+          }
+        });
+      }
+      highlightSelected();
+    }
+
+    marqueeEl.remove();
+    marqueeEl = null;
+  });
+}
 
 function esc(s){
   if(s === null || s === undefined) return '';
