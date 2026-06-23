@@ -99,7 +99,7 @@ function renderMapCanvas(){
       <button class="map-tool-btn" onclick="cleanupOrphanedNodes()" title="Remove broken items" style="background:#FFA500;color:white;">Clean Up</button>
       <button class="map-tool-btn" onclick="clearAllNodes()" title="Clear everything" style="background:#FF4444;color:white;">Clear All</button>
     </div>
-    <svg id="map-svg" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;"></svg>
+    <svg id="map-svg" style="position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible;"></svg>
     <div id="map-nodes-layer" style="position:absolute;top:0;left:0;width:100%;height:100%;"></div>
   `;
   
@@ -120,9 +120,14 @@ function renderNodes(map){
     const item = allItems.find(i=>i.id===node.itemId);
     if(!item) return '';
     const hex = colorHex(item.color||'gray');
-    return `<div class="map-node" style="left:${node.x}px;top:${node.y}px;position:absolute;cursor:move;" onmousedown="startNodeDrag(event,'${node.id}')">
-      <div style="background:#FFFFFF;color:#666;border:3px solid ${hex};display:flex;align-items:center;justify-content:center;font-size:24px;width:60px;height:60px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+    const portStyle = 'position:absolute;width:12px;height:12px;background:#fff;border:2px solid '+hex+';border-radius:50%;cursor:crosshair;z-index:10;';
+    return `<div class="map-node" id="mn_${node.id}" style="left:${node.x}px;top:${node.y}px;position:absolute;cursor:move;" onmousedown="startNodeDrag(event,'${node.id}')">
+      <div style="position:relative;background:#FFFFFF;color:#666;border:3px solid ${hex};display:flex;align-items:center;justify-content:center;font-size:24px;width:60px;height:60px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
         ${getEmojiForType(item.type || 'skill')}
+        <div class="map-port" style="${portStyle}top:-7px;left:24px;" onmousedown="startConnect(event,'${node.id}','top')" title="Connect"></div>
+        <div class="map-port" style="${portStyle}bottom:-7px;left:24px;" onmousedown="startConnect(event,'${node.id}','bottom')" title="Connect"></div>
+        <div class="map-port" style="${portStyle}left:-7px;top:24px;" onmousedown="startConnect(event,'${node.id}','left')" title="Connect"></div>
+        <div class="map-port" style="${portStyle}right:-7px;top:24px;" onmousedown="startConnect(event,'${node.id}','right')" title="Connect"></div>
       </div>
       <div style="font-size:11px;margin-top:8px;text-align:center;max-width:80px;font-weight:500;">${esc(item.name)}</div>
       <div style="font-size:9px;text-align:center;color:#999;">${item.type}</div>
@@ -130,7 +135,132 @@ function renderNodes(map){
   }).join('');
 }
 
-function renderEdges(map){}
+function renderEdges(map){
+  const svg = document.getElementById('map-svg');
+  if(!svg) return;
+  
+  svg.innerHTML = (map.edges||[]).map((edge, idx)=>{
+    const fromNode = map.nodes.find(n=>n.id===edge.from);
+    const toNode = map.nodes.find(n=>n.id===edge.to);
+    if(!fromNode || !toNode) return '';
+    
+    const fromPort = edge.fromPort || 'right';
+    const toPort = edge.toPort || 'left';
+    
+    // Node is 60px wide icon, center is at x+30, y+30
+    const getPortPos = (node, port) => {
+      const cx = node.x + 30;
+      const cy = node.y + 30;
+      switch(port){
+        case 'top': return {x: cx, y: node.y};
+        case 'bottom': return {x: cx, y: node.y + 60};
+        case 'left': return {x: node.x, y: cy};
+        case 'right': return {x: node.x + 60, y: cy};
+        default: return {x: cx, y: cy};
+      }
+    };
+    
+    const p1 = getPortPos(fromNode, fromPort);
+    const p2 = getPortPos(toNode, toPort);
+    
+    // Bezier curve control points
+    const dx = Math.abs(p2.x - p1.x);
+    const offset = Math.max(40, dx/2);
+    let c1x = p1.x, c1y = p1.y, c2x = p2.x, c2y = p2.y;
+    if(fromPort==='right'){ c1x = p1.x + offset; }
+    else if(fromPort==='left'){ c1x = p1.x - offset; }
+    else if(fromPort==='top'){ c1y = p1.y - offset; }
+    else if(fromPort==='bottom'){ c1y = p1.y + offset; }
+    if(toPort==='right'){ c2x = p2.x + offset; }
+    else if(toPort==='left'){ c2x = p2.x - offset; }
+    else if(toPort==='top'){ c2y = p2.y - offset; }
+    else if(toPort==='bottom'){ c2y = p2.y + offset; }
+    
+    const path = `M ${p1.x} ${p1.y} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${p2.x} ${p2.y}`;
+    return `<g>
+      <path d="${path}" stroke="#94a3b8" stroke-width="2.5" fill="none" style="pointer-events:stroke;cursor:pointer;" onclick="deleteEdge(${idx})"></path>
+      <path d="${path}" stroke="transparent" stroke-width="12" fill="none" style="pointer-events:stroke;cursor:pointer;" onclick="deleteEdge(${idx})"></path>
+    </g>`;
+  }).join('');
+}
+
+// Connection state
+let connectStart = null;
+
+function startConnect(event, nodeId, port){
+  event.preventDefault();
+  event.stopPropagation();
+  connectStart = {nodeId, port};
+  
+  const moveHandler = (e) => {
+    const svg = document.getElementById('map-svg');
+    if(!svg) return;
+    const map = getActiveMap();
+    if(!map) return;
+    const fromNode = map.nodes.find(n=>n.id===nodeId);
+    if(!fromNode) return;
+    
+    const cx = fromNode.x + 30, cy = fromNode.y + 30;
+    let x1 = cx, y1 = cy;
+    if(port==='top'){ y1 = fromNode.y; }
+    else if(port==='bottom'){ y1 = fromNode.y + 60; }
+    else if(port==='left'){ x1 = fromNode.x; }
+    else if(port==='right'){ x1 = fromNode.x + 60; }
+    
+    const wrap = document.getElementById('map-canvas-wrap');
+    const rect = wrap.getBoundingClientRect();
+    const x2 = e.clientX - rect.left;
+    const y2 = e.clientY - rect.top;
+    
+    renderEdges(map);
+    svg.innerHTML += `<path d="M ${x1} ${y1} L ${x2} ${y2}" stroke="#00B4D8" stroke-width="2.5" stroke-dasharray="5,5" fill="none"></path>`;
+  };
+  
+  const upHandler = (e) => {
+    document.removeEventListener('mousemove', moveHandler);
+    document.removeEventListener('mouseup', upHandler);
+    
+    // Find target port
+    const target = e.target;
+    if(target && target.classList.contains('map-port')){
+      const targetNodeEl = target.closest('.map-node');
+      if(targetNodeEl){
+        const targetNodeId = targetNodeEl.id.replace('mn_','');
+        if(targetNodeId !== nodeId){
+          // Determine which port was hit
+          const onclickAttr = target.getAttribute('onmousedown')||'';
+          const portMatch = onclickAttr.match(/'(top|bottom|left|right)'/);
+          const toPort = portMatch ? portMatch[1] : 'left';
+          
+          const map = getActiveMap();
+          if(map){
+            if(!map.edges) map.edges = [];
+            map.edges.push({from: nodeId, to: targetNodeId, fromPort: port, toPort: toPort});
+            saveMaps();
+            renderMapCanvas();
+          }
+        }
+      }
+    } else {
+      // No valid target, just re-render to clear the temp line
+      const map = getActiveMap();
+      if(map) renderEdges(map);
+    }
+    connectStart = null;
+  };
+  
+  document.addEventListener('mousemove', moveHandler);
+  document.addEventListener('mouseup', upHandler);
+}
+
+function deleteEdge(idx){
+  const map = getActiveMap();
+  if(!map || !map.edges) return;
+  if(!confirm('Delete this connection?')) return;
+  map.edges.splice(idx, 1);
+  saveMaps();
+  renderMapCanvas();
+}
 
 function openCreateItemModal(){
   const map = getActiveMap();
