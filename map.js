@@ -183,11 +183,11 @@ function createSkillOnCanvas(){
               box-sizing: border-box;
             "
           >
-            <option value="output">📤 Output</option>
-            <option value="input">📥 Input</option>
-            <option value="skill">🎯 Skill</option>
-            <option value="agent">🤖 Agent</option>
-            <option value="description">📝 Description</option>
+            <option value="output">Output</option>
+            <option value="input">Input</option>
+            <option value="skill">Skill</option>
+            <option value="agent">Agent</option>
+            <option value="description">Description</option>
           </select>
         </div>
         
@@ -204,13 +204,13 @@ function createSkillOnCanvas(){
               box-sizing: border-box;
             "
           >
-            <option value="blue">🔵 Blue</option>
-            <option value="purple">🟣 Purple</option>
-            <option value="teal">🔷 Teal</option>
-            <option value="pink">🔴 Pink</option>
-            <option value="orange">🟠 Orange</option>
-            <option value="green">🟢 Green</option>
-            <option value="gray">⚫ Gray</option>
+            <option value="blue">Blue</option>
+            <option value="purple">Purple</option>
+            <option value="teal">Teal</option>
+            <option value="pink">Pink</option>
+            <option value="orange">Orange</option>
+            <option value="green">Green</option>
+            <option value="gray">Gray</option>
           </select>
         </div>
         
@@ -323,7 +323,7 @@ function confirmCreateSkillOnCanvas(){
   const y = 40 + row * 120;
   
   pushUndo();
-  map.nodes.push({id:'n_'+Date.now(), itemId: newItem.id, x, y});
+  map.nodes.push({id:'n_'+Date.now(), itemId: newItem.id, x, y, type: type});
   saveMaps();
   
   // Update skill list and re-render
@@ -332,6 +332,21 @@ function confirmCreateSkillOnCanvas(){
 }
 
 // ── CANVAS RENDER ───────────────────────────────────────────────────────────
+// ── TYPE TO EMOJI MAPPING ──────────────────────────────────────────────────
+const typeEmojis = {
+  'output': '📤',
+  'input': '📥',
+  'skill': '🎯',
+  'agent': '🤖',
+  'description': '📝',
+  // Fallback for any other types
+  'default': '⚙️'
+};
+
+function getEmojiForType(type){
+  return typeEmojis[type] || typeEmojis['default'];
+}
+
 function renderMapCanvas(){
   const wrap = document.getElementById('map-canvas-wrap');
   if(!wrap) return;
@@ -416,8 +431,8 @@ function renderNodes(map){
       onmousedown="startNodeDrag(event,'${node.id}')">
       <button class="map-node-del" onclick="removeNodeFromMap('${node.id}')" title="Remove"><i class="ti ti-x"></i></button>
       <div class="map-node-header">
-        <div class="map-node-icon" style="background:#FFFFFF;color:#666;border:3px solid ${hex};">
-          <i class="ti ${item.icon||'ti-puzzle'}" style="font-size:11px"></i>
+        <div class="map-node-icon" style="background:#FFFFFF;color:#666;border:3px solid ${hex};display:flex;align-items:center;justify-content:center;font-size:18px;">
+          ${getEmojiForType(node.type || 'skill')}
         </div>
         <span class="map-node-name">${esc(item.name)}</span>
       </div>
