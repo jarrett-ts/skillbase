@@ -36,9 +36,11 @@ function renderPrompt(prompt){
   let text = prompt;
   // Strip YAML frontmatter (--- ... ---)
   text = text.replace(/^---[\s\S]*?---\n?/, '');
-  // Escape HTML
+  // Strip a leading # Heading that just repeats the skill name
+  text = text.replace(/^# .+\n?/, '');
+  // Strip leading blank lines
+  text = text.replace(/^\n+/, '');
   const e = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  // Convert markdown to basic HTML
   const lines = text.split('\n');
   let html = '';
   let inList = false;
@@ -46,34 +48,36 @@ function renderPrompt(prompt){
     const l = line.trimEnd();
     if(l.startsWith('### ')){
       if(inList){html+='</ul>';inList=false;}
-      html += '<h4 style="margin:14px 0 4px;font-size:12px;font-weight:700;color:#4A2080;text-transform:uppercase;letter-spacing:.06em;">'+e(l.slice(4))+'</h4>';
+      html += '<h4 style="margin:12px 0 3px;font-size:11px;font-weight:700;color:#4A2080;text-transform:uppercase;letter-spacing:.07em;">'+e(l.slice(4))+'</h4>';
     } else if(l.startsWith('## ')){
       if(inList){html+='</ul>';inList=false;}
-      html += '<h3 style="margin:16px 0 5px;font-size:13px;font-weight:700;color:#1a2b4a;border-bottom:1px solid #e0e0e0;padding-bottom:4px;">'+e(l.slice(3))+'</h3>';
+      html += '<h3 style="margin:14px 0 4px;font-size:13px;font-weight:700;color:#1a2b4a;">'+e(l.slice(3))+'</h3>';
     } else if(l.startsWith('# ')){
       if(inList){html+='</ul>';inList=false;}
-      html += '<h2 style="margin:0 0 8px;font-size:15px;font-weight:700;color:#1a2b4a;">'+e(l.slice(2))+'</h2>';
-    } else if(l.startsWith('- ') || l.startsWith('* ')){
-      if(!inList){html+='<ul style="margin:4px 0;padding-left:18px;">';inList=true;}
+      html += '<h2 style="margin:0 0 8px;font-size:14px;font-weight:700;color:#1a2b4a;">'+e(l.slice(2))+'</h2>';
+    } else if(l.match(/^[-*] /)){
+      if(!inList){html+='<ul style="margin:3px 0;padding-left:16px;">'; inList=true;}
       let item = e(l.slice(2));
-      item = item.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
-      item = item.replace(/`(.+?)`/g,'<code style="background:#f0f0f0;padding:1px 4px;border-radius:3px;font-size:11px;">$1</code>');
-      html += '<li style="margin:2px 0;font-size:12px;color:#333;">'+item+'</li>';
+      item = item.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/`(.+?)`/g,'<code style="background:#f0f0f0;padding:1px 4px;border-radius:3px;font-size:10px;">$1</code>');
+      html += '<li style="margin:2px 0;font-size:12px;color:#333;line-height:1.5;">'+item+'</li>';
+    } else if(l === '---'){
+      if(inList){html+='</ul>';inList=false;}
+      // skip --- separators (avoid double lines)
+    } else if(l === ''){
+      if(inList){html+='</ul>';inList=false;}
+      html += '<div style="height:4px;"></div>';
     } else {
       if(inList){html+='</ul>';inList=false;}
-      if(l === '' || l === '---'){
-        html += '<div style="height:6px;"></div>';
-      } else {
-        let p = e(l);
-        p = p.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
-        p = p.replace(/`(.+?)`/g,'<code style="background:#f0f0f0;padding:1px 4px;border-radius:3px;font-size:11px;">$1</code>');
-        html += '<p style="margin:3px 0;font-size:12px;color:#333;line-height:1.6;">'+p+'</p>';
-      }
+      let p = e(l);
+      p = p.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/`(.+?)`/g,'<code style="background:#f0f0f0;padding:1px 4px;border-radius:3px;font-size:10px;">$1</code>');
+      html += '<p style="margin:2px 0;font-size:12px;color:#333;line-height:1.6;">'+p+'</p>';
     }
   }
   if(inList) html += '</ul>';
   return html;
 }
+
+
 function fullDate(ts){return ts?new Date(ts).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'-';}
 function toggleSidebar(){sidebarOpen=!sidebarOpen;const sb=document.getElementById('sidebar');sb.className='sidebar '+(sidebarOpen?'expanded':'collapsed');if(sidebarOpen){let w=240;try{const s=localStorage.getItem('sb_sidebar_w');if(s)w=parseInt(s,10)||240;}catch(e){}sb.style.width=w+'px';}else{sb.style.width='0px';}}
 function toggleMenu(){menuOpen=!menuOpen;const m=document.getElementById('action-menu');if(m)m.className='menu-dropdown '+(menuOpen?'open':'');if(menuOpen)setTimeout(()=>document.addEventListener('click',closeMenu,{once:true}),0);}
