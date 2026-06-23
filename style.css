@@ -72,7 +72,6 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .map-item:hover .map-item-del{display:block;}
 .map-item-actions{display:none;gap:1px;}
 .map-item:hover .map-item-actions{display:flex;}
-.map-node:hover .map-port{opacity:1!important;}
 .map-empty{font-size:11px;color:var(--text-muted);padding:4px 2px;}
 
 /* â”€â”€ Add buttons â”€â”€ */
