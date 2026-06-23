@@ -1,16 +1,21 @@
-// ── COLOR HEX MAPPING ────────────────────────────────────────────────────────
-const COLORS = {
-  'blue': '#00B4D8',
-  'purple': '#7209B7',
-  'teal': '#00D9FF',
-  'pink': '#FF006E',
-  'orange': '#FB5607',
-  'green': '#06A77D',
-  'gray': '#A0AEC0'
-};
-
+// ── COLOR HEX MAPPING (safe fallback) ──────────────────────────────────────
+// Use global COLORS if available, otherwise use fallback
 function colorHex(c){
-  return COLORS[c] || COLORS.gray;
+  // Try to use global COLORS if it exists (from app.js)
+  if(typeof COLORS !== 'undefined'){
+    return COLORS[c] || COLORS.gray;
+  }
+  // Fallback color map if COLORS not available
+  const localColors = {
+    'blue': '#00B4D8',
+    'purple': '#7209B7',
+    'teal': '#00D9FF',
+    'pink': '#FF006E',
+    'orange': '#FB5607',
+    'green': '#06A77D',
+    'gray': '#A0AEC0'
+  };
+  return localColors[c] || localColors.gray;
 }
 
 // ── MAP CANVAS ─────────────────────────────────────────────────────────────
