@@ -300,7 +300,7 @@ function confirmCreateSkillOnCanvas(){
   if(!S.personal) S.personal = [];
   S.personal.push(newItem);
   
-  // IMPORTANT: Save skills to localStorage
+  // CRITICAL: Save skills to localStorage so they persist
   try{
     localStorage.setItem('sb_skills_v2', JSON.stringify(S));
   }catch(e){
@@ -323,7 +323,7 @@ function confirmCreateSkillOnCanvas(){
   map.nodes.push({id:'n_'+Date.now(), itemId: newItem.id, x, y});
   saveMaps();
   
-  // Update skill list and re-render everything
+  // Update skill list and re-render
   if(typeof renderSkillsUI === 'function') renderSkillsUI();
   renderMapCanvas();
 }
@@ -417,8 +417,10 @@ function renderNodes(map){
         <span class="map-node-name">${esc(item.name)}</span>
       </div>
       <span class="map-node-badge ${badgeClass}">${item.type}</span>
-      <div class="map-node-port port-right" onmousedown="startConnect(event,'${node.id}','right')" title="Connect"></div>
-      <div class="map-node-port port-left" onmousedown="startConnect(event,'${node.id}','left')" title="Connect"></div>
+      <div class="map-node-port port-left" onmousedown="startConnect(event,'${node.id}','left')" title="Connect (input)"></div>
+      <div class="map-node-port port-right" onmousedown="startConnect(event,'${node.id}','right')" title="Connect (output)"></div>
+      <div class="map-node-port port-top" onmousedown="startConnect(event,'${node.id}','top')" title="Connect (input)"></div>
+      <div class="map-node-port port-bottom" onmousedown="startConnect(event,'${node.id}','bottom')" title="Connect (output)"></div>
     </div>`;
   }).join('');
 }
@@ -436,12 +438,26 @@ function renderEdges(map){
     if(!fromEl||!toEl) return '';
     const fw = fromEl.offsetWidth, fh = fromEl.offsetHeight;
     const tw = toEl.offsetWidth, th = toEl.offsetHeight;
-    const x1 = from.x + fw;
-    const y1 = from.y + fh/2;
-    const x2 = to.x;
-    const y2 = to.y + th/2;
-    const cx = (x1+x2)/2;
-    return `<path d="M${x1},${y1} C${cx},${y1} ${cx},${y2} ${x2},${y2}"
+    const fromPort = edge.fromPort || 'right';
+    const toPort = edge.toPort || 'left';
+    let x1, y1, x2, y2;
+    switch(fromPort) {
+      case 'right': x1 = from.x + fw; y1 = from.y + fh/2; break;
+      case 'left': x1 = from.x; y1 = from.y + fh/2; break;
+      case 'top': x1 = from.x + fw/2; y1 = from.y; break;
+      case 'bottom': x1 = from.x + fw/2; y1 = from.y + fh; break;
+      default: x1 = from.x + fw; y1 = from.y + fh/2;
+    }
+    switch(toPort) {
+      case 'right': x2 = to.x + tw; y2 = to.y + th/2; break;
+      case 'left': x2 = to.x; y2 = to.y + th/2; break;
+      case 'top': x2 = to.x + tw/2; y2 = to.y; break;
+      case 'bottom': x2 = to.x + tw/2; y2 = to.y + th; break;
+      default: x2 = to.x; y2 = to.y + th/2;
+    }
+    const cx = (x1+x2)/2, cy = (y1+y2)/2;
+    const d = `M${x1},${y1} Q${cx},${cy} ${x2},${y2}`;
+    return `<path d="${d}"
       fill="none" stroke="#0F1B3F" stroke-width="1.5" stroke-opacity="0.5"
       marker-end="url(#arrowhead)"/>`;
   }).join('');
@@ -532,9 +548,15 @@ function startConnect(e, nodeId, port){
   const el = document.getElementById('mn_'+nodeId);
   const w = el ? el.offsetWidth : 160;
   const h = el ? el.offsetHeight : 60;
-  const x1 = node.x + (port === 'right' ? w : 0);
-  const y1 = node.y + h/2;
-  connectDrag = { fromId: nodeId, x1, y1 };
+  let x1, y1;
+  switch(port) {
+    case 'right': x1 = node.x + w; y1 = node.y + h/2; break;
+    case 'left': x1 = node.x; y1 = node.y + h/2; break;
+    case 'top': x1 = node.x + w/2; y1 = node.y; break;
+    case 'bottom': x1 = node.x + w/2; y1 = node.y + h; break;
+    default: x1 = node.x + w; y1 = node.y + h/2;
+  }
+  connectDrag = { fromId: nodeId, fromPort: port, x1, y1 };
   document.addEventListener('mousemove', onConnectDrag);
   document.addEventListener('mouseup', endConnect, { once:true });
 }
@@ -577,8 +599,25 @@ function endConnect(e){
   if(!toId || toId === drag.fromId) return;
   const map = getActiveMap();
   if(!map) return;
-  const exists = map.edges.find(ed=>(ed.from===drag.fromId&&ed.to===toId)||(ed.from===toId&&ed.to===drag.fromId));
-  if(!exists){ pushUndo(); map.edges.push({ from: drag.fromId, to: toId }); }
+  const toNode = map.nodes.find(n=>n.id===toId);
+  if(!toNode) return;
+  const toEl = document.getElementById('mn_'+toId);
+  const toW = toEl ? toEl.offsetWidth : 160;
+  const toH = toEl ? toEl.offsetHeight : 60;
+  const r = toEl.getBoundingClientRect();
+  const mouseX = e.clientX - r.left;
+  const mouseY = e.clientY - r.top;
+  const distLeft = Math.abs(mouseX);
+  const distRight = Math.abs(mouseX - toW);
+  const distTop = Math.abs(mouseY);
+  const distBottom = Math.abs(mouseY - toH);
+  const minDist = Math.min(distLeft, distRight, distTop, distBottom);
+  let toPort = 'left';
+  if(minDist === distRight) toPort = 'right';
+  else if(minDist === distTop) toPort = 'top';
+  else if(minDist === distBottom) toPort = 'bottom';
+  const exists = map.edges.find(ed=>(ed.from===drag.fromId&&ed.to===toId&&ed.fromPort===drag.fromPort&&ed.toPort===toPort));
+  if(!exists){ pushUndo(); map.edges.push({ from: drag.fromId, to: toId, fromPort: drag.fromPort, toPort: toPort }); }
   saveMaps();
   renderEdges(map);
 }
