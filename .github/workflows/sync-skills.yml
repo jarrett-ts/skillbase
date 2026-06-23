@@ -4,97 +4,16 @@ on:
   push:
     paths:
       - 'skills/**'
-  workflow_dispatch:  # allow manual trigger too
+  workflow_dispatch:
 
 jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2  # need previous commit to detect changes
 
-      - name: Sync changed skill files to Supabase
+      - name: Sync skill files to Supabase
+        run: python3 skills/sync.py
         env:
           SB_URL: https://zjruwkdmvpgfpyxpnffj.supabase.co
           SB_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpqcnV3a2RtdnBnZnB5eHBuZmZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4MDg5NjksImV4cCI6MjA5NzM4NDk2OX0.jlQkFpYtkh497qFWkG03tJZGQ-5R_bWx4QxwRUNEO1E
-        run: |
-          python3 << 'EOF'
-          import os, re, json, urllib.request, urllib.error
-
-          SB_URL = os.environ["SB_URL"]
-          SB_KEY = os.environ["SB_KEY"]
-
-          # ID mapping: filename (without .md) -> Supabase skill id
-          ID_MAP = {
-            "production-brief-asset-breakdown": "pbab",
-            "production-brief-resource-breakdown": "pbrb",
-            "ad-grammar": "adgrammar",
-            "mosaic-video-editor": "mosaic",
-            "sales-components-footage": "salescomp",
-            "shadow": "shadow",
-            "shot-list-creator": "shotlist",
-            "soundbite-checker": "soundbite",
-            "substance-vs-style": "svs",
-            "testimonial-messaging-groups": "tmg",
-            "thumbstop-shop": "thumbstop",
-            "video-shot-list": "videoshotlist",
-            "visual-archetypes": "visarch",
-          }
-
-          skills_dir = "skills"
-          if not os.path.exists(skills_dir):
-            print("No skills directory found")
-            exit(0)
-
-          ok, fail, skip = 0, 0, 0
-          for fname in os.listdir(skills_dir):
-            if not fname.endswith(".md"):
-              continue
-            skill_key = fname[:-3]  # remove .md
-            skill_id = ID_MAP.get(skill_key)
-            if not skill_id:
-              print(f"SKIP: {fname} (no ID mapping)")
-              skip += 1
-              continue
-
-            with open(os.path.join(skills_dir, fname), "r") as f:
-              content = f.read()
-
-            # Extract description from frontmatter
-            desc_match = re.search(r'^description:\s*["\''](.+?)["\'']?\s*$', content, re.MULTILINE)
-            description = desc_match.group(1).strip() if desc_match else ""
-
-            payload = json.dumps({
-              "prompt": content,
-              "description": description,
-              "updated_at": __import__("datetime").datetime.utcnow().isoformat() + "Z"
-            }).encode()
-
-            req = urllib.request.Request(
-              f"{SB_URL}/rest/v1/skills?id=eq.{skill_id}",
-              data=payload,
-              method="PATCH",
-              headers={
-                "apikey": SB_KEY,
-                "Authorization": f"Bearer {SB_KEY}",
-                "Content-Type": "application/json",
-                "Prefer": "return=minimal"
-              }
-            )
-            try:
-              with urllib.request.urlopen(req) as resp:
-                if resp.status == 204:
-                  print(f"✓ {skill_id} ({fname})")
-                  ok += 1
-                else:
-                  print(f"✗ {skill_id} status={resp.status}")
-                  fail += 1
-            except urllib.error.HTTPError as e:
-              print(f"✗ {skill_id} error={e.code} {e.reason}")
-              fail += 1
-
-          print(f"\nDone: {ok} updated, {fail} failed, {skip} skipped")
-          if fail > 0:
-            exit(1)
-          EOF
