@@ -323,7 +323,7 @@ function confirmCreateSkillOnCanvas(){
   const y = 40 + row * 120;
   
   pushUndo();
-  map.nodes.push({id:'n_'+Date.now(), itemId: newItem.id, x, y, type: type});
+  map.nodes.push({id:'n_'+Date.now(), itemId: newItem.id, x, y});
   saveMaps();
   
   // Update skill list and re-render
@@ -334,11 +334,11 @@ function confirmCreateSkillOnCanvas(){
 // ── CANVAS RENDER ───────────────────────────────────────────────────────────
 // ── TYPE TO EMOJI MAPPING ──────────────────────────────────────────────────
 const typeEmojis = {
-  'output': '📤',
-  'input': '📥',
-  'skill': '🎯',
+  'output': '📦',
+  'input': '📩',
+  'skill': '🛠️',
   'agent': '🤖',
-  'description': '📝',
+  'description': '📖',
   // Fallback for any other types
   'default': '⚙️'
 };
@@ -432,7 +432,7 @@ function renderNodes(map){
       <button class="map-node-del" onclick="removeNodeFromMap('${node.id}')" title="Remove"><i class="ti ti-x"></i></button>
       <div class="map-node-header">
         <div class="map-node-icon" style="background:#FFFFFF;color:#666;border:3px solid ${hex};display:flex;align-items:center;justify-content:center;font-size:18px;">
-          ${getEmojiForType(node.type || 'skill')}
+          ${getEmojiForType(item.type || 'skill')}
         </div>
         <span class="map-node-name">${esc(item.name)}</span>
       </div>
