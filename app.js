@@ -3412,7 +3412,7 @@ async function archiveItem(id,lib){
 }
 function selectItem(id,lib){
   S.selected=id;S.selLib=lib;menuOpen=false;pickerOpen=false;rerender();renderMain();
-  if(mapSectionOpen && activeMapId) addItemToMap(id);
+  // drag and drop to add items instead of auto-add
 }
 function getSelected(){return getSrc(S.selLib||S.lib).find(i=>i.id===S.selected);}
 function getAllSkills(){return[...S.personal,...S.shared].filter(i=>i.type==='skill'&&!i.archived);}
