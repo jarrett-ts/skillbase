@@ -379,13 +379,8 @@ function renderEdges(map){
     const p1 = getPortPos(fromNode, fromPort);
     const p2 = getPortPos(toNode, toPort);
     
-    // Pull the arrow endpoint back slightly so the arrowhead tip sits right at the port
-    const backoff = 6;
+    // No backoff — tip lands exactly on the port dot
     let endX = p2.x, endY = p2.y;
-    if(toPort==='right'){ endX = p2.x + backoff; }
-    else if(toPort==='left'){ endX = p2.x - backoff; }
-    else if(toPort==='top'){ endY = p2.y - backoff; }
-    else if(toPort==='bottom'){ endY = p2.y + backoff; }
     
     // Bezier curve control points
     const dx = Math.abs(p2.x - p1.x);
