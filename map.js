@@ -81,6 +81,43 @@ function renderMapList(){
   `).join('');
 }
 
+
+// ── GLOBAL DRAG-DROP HANDLER (works for any map-canvas-wrap) ────────────────
+let _dropHandlerInstalled = false;
+function setupGlobalDropHandler(){
+  if(_dropHandlerInstalled) return;
+  _dropHandlerInstalled = true;
+  
+  document.addEventListener('dragover', (e) => {
+    const wrap = e.target.closest && e.target.closest('.map-canvas-wrap');
+    if(wrap){ e.preventDefault(); if(e.dataTransfer) e.dataTransfer.dropEffect = 'copy'; }
+  });
+  
+  document.addEventListener('drop', (e) => {
+    const wrap = e.target.closest && e.target.closest('.map-canvas-wrap');
+    if(!wrap) return;
+    e.preventDefault();
+    e.stopPropagation();
+    
+    let itemId = '';
+    try { itemId = e.dataTransfer.getData('text/plain'); } catch(err) {}
+    if((!itemId) && typeof dragState !== 'undefined' && dragState && dragState.id){
+      itemId = dragState.id;
+    }
+    if(!itemId) return;
+    
+    const m = getActiveMap();
+    if(!m) return;
+    const rect = wrap.getBoundingClientRect();
+    const x = e.clientX - rect.left - 30;
+    const y = e.clientY - rect.top - 30;
+    if(!m.nodes) m.nodes = [];
+    m.nodes.push({id:'n_'+Date.now(), itemId, x: Math.max(0,x), y: Math.max(0,y)});
+    saveMaps();
+    renderMapCanvas();
+  });
+}
+
 function renderMapCanvas(){
   const wrap = document.getElementById('map-canvas-wrap');
   if(!wrap) return;
@@ -92,29 +129,8 @@ function renderMapCanvas(){
   }
   wrap.classList.remove('empty-state');
   
-  // Enable drop from sidebar (robust: handle events on wrap and bubbled from children)
-  wrap.addEventListener('dragenter', (e) => { e.preventDefault(); });
-  wrap.addEventListener('dragover', (e) => { e.preventDefault(); if(e.dataTransfer) e.dataTransfer.dropEffect = 'copy'; });
-  wrap.addEventListener('drop', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    // Try dataTransfer first, fall back to global dragState from app.js
-    let itemId = '';
-    try { itemId = e.dataTransfer.getData('text/plain'); } catch(err) {}
-    if((!itemId) && typeof dragState !== 'undefined' && dragState && dragState.id){
-      itemId = dragState.id;
-    }
-    if(!itemId) return;
-    const m = getActiveMap();
-    if(!m) return;
-    const rect = wrap.getBoundingClientRect();
-    const x = e.clientX - rect.left - 30;
-    const y = e.clientY - rect.top - 30;
-    if(!m.nodes) m.nodes = [];
-    m.nodes.push({id:'n_'+Date.now(), itemId, x: Math.max(0,x), y: Math.max(0,y)});
-    saveMaps();
-    renderMapCanvas();
-  });
+  // Drop handling is set up globally once (see setupGlobalDropHandler)
+  setupGlobalDropHandler();
   
   wrap.innerHTML = `
     <div class="map-toolbar">
