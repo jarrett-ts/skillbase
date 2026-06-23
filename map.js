@@ -87,6 +87,11 @@ let _dropHandlerInstalled = false;
 function setupGlobalDropHandler(){
   if(_dropHandlerInstalled) return;
   _dropHandlerInstalled = true;
+  console.log('[DND] Global drop handler installed');
+  
+  document.addEventListener('dragstart', (e) => {
+    console.log('[DND] dragstart on:', e.target.className || e.target.tagName);
+  });
   
   document.addEventListener('dragover', (e) => {
     const wrap = e.target.closest && e.target.closest('.map-canvas-wrap');
@@ -94,25 +99,31 @@ function setupGlobalDropHandler(){
   });
   
   document.addEventListener('drop', (e) => {
+    console.log('[DND] DROP fired on:', e.target.className || e.target.tagName);
     const wrap = e.target.closest && e.target.closest('.map-canvas-wrap');
+    console.log('[DND] closest .map-canvas-wrap:', wrap ? 'FOUND' : 'NOT FOUND');
     if(!wrap) return;
     e.preventDefault();
     e.stopPropagation();
     
     let itemId = '';
     try { itemId = e.dataTransfer.getData('text/plain'); } catch(err) {}
+    console.log('[DND] itemId from dataTransfer:', itemId);
+    console.log('[DND] dragState:', typeof dragState !== 'undefined' ? JSON.stringify(dragState) : 'undefined');
     if((!itemId) && typeof dragState !== 'undefined' && dragState && dragState.id){
       itemId = dragState.id;
     }
-    if(!itemId) return;
+    console.log('[DND] final itemId:', itemId);
+    if(!itemId) { console.log('[DND] ABORT: no itemId'); return; }
     
     const m = getActiveMap();
-    if(!m) return;
+    if(!m) { console.log('[DND] ABORT: no active map'); return; }
     const rect = wrap.getBoundingClientRect();
     const x = e.clientX - rect.left - 30;
     const y = e.clientY - rect.top - 30;
     if(!m.nodes) m.nodes = [];
     m.nodes.push({id:'n_'+Date.now(), itemId, x: Math.max(0,x), y: Math.max(0,y)});
+    console.log('[DND] SUCCESS: added node, total now', m.nodes.length);
     saveMaps();
     renderMapCanvas();
   });
