@@ -57,7 +57,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .ia-btn.danger:hover{color:#A32D2D;background:#FCEBEB;}
 
 /* â”€â”€ Maps section in sidebar â”€â”€ */
-.maps-section{border-top:1.5px solid var(--border-mid);padding:8px 10px;}
+.maps-section{border-top:1.5px solid var(--border-mid);padding:8px 10px;overflow-y:auto;flex-shrink:0;min-height:60px;}
 .maps-section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
 .maps-section-title{font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;}
 .map-new-btn{background:none;border:none;cursor:pointer;padding:2px 5px;border-radius:5px;font-size:11px;color:var(--ts-navy);font-weight:600;display:flex;align-items:center;gap:3px;transition:all .12s;}
