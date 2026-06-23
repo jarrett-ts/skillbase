@@ -259,7 +259,7 @@ function renderNodes(map){
     const halfSize = size/2;
     // The iconbox IS the bordered square - ports on its edges
     const isSelected = window._selectedNodeIds.has(node.id);
-    return `<div class="map-node" id="mn_${node.id}" style="left:${node.x}px;top:${node.y}px;position:absolute;pointer-events:auto;background:transparent;border:none;padding:0;min-width:0;max-width:none;box-shadow:none;border-radius:0;cursor:default;display:flex;flex-direction:column;align-items:center;" onclick="selectNode('${node.id}')">
+    return `<div class="map-node" id="mn_${node.id}" style="left:${node.x}px;top:${node.y}px;position:absolute;pointer-events:auto;background:transparent;border:none;padding:0;min-width:0;max-width:none;box-shadow:none;border-radius:0;cursor:default;display:flex;flex-direction:column;align-items:center;" onclick="selectNode('${node.id}', event.shiftKey)">
       <div class="map-node-iconbox" style="position:relative;width:${size}px;height:${size}px;">
         <div style="position:absolute;top:0;left:0;width:${size}px;height:${size}px;background:#FFFFFF;color:#666;border:3px solid ${hex};display:flex;align-items:center;justify-content:center;font-size:${emojiSize}px;border-radius:6px;box-shadow:${isSelected ? '0 0 0 3px #00B4D8, 0 2px 8px rgba(0,0,0,0.1)' : '0 2px 8px rgba(0,0,0,0.1)'};box-sizing:border-box;cursor:move;outline:${isSelected ? '2px dashed #00B4D8' : 'none'};outline-offset:3px;" onmousedown="startNodeDrag(event,'${node.id}')">
           ${getEmojiForType(displayType)}
