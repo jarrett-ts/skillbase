@@ -27,7 +27,7 @@ function installApp(){
 
 function colorHex(c){return COLORS[c]||COLORS.gray;}
 function iconEl(icon,color,size){const bg=colorHex(color);return`<div class="item-icon" style="background:${bg}18;color:${bg};border:1px solid ${bg}30;"><i class="ti ${icon||'ti-puzzle'}" style="font-size:${size||11}px"></i></div>`;}
-function esc(t){return(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function esc(t){return(t||'').replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>');}
 function timeAgo(ts){if(!ts)return'';const d=Math.floor((Date.now()-ts)/1000);if(d<60)return'just now';if(d<3600)return Math.floor(d/60)+'m ago';if(d<86400)return Math.floor(d/3600)+'h ago';return Math.floor(d/86400)+'d ago';}
 function initials(n){return(n||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();}
 function fullDate(ts){return ts?new Date(ts).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'-';}
@@ -3515,12 +3515,12 @@ function renderMain(){
       <div class="drawer-body">
         <div class="drawer-section">
           <div class="drawer-section-label">Test input</div>
-          <textarea id="test-input" placeholder="Paste a sample input…"></textarea>
+          <textarea id="test-input" placeholder="Paste a sample input…"><\/textarea>
           <button class="run-btn" id="run-btn" onclick="runTest()"><i class="ti ti-player-play"></i> Run test</button>
         </div>
         <div class="drawer-section">
           <div class="drawer-section-label">Notes</div>
-          <textarea id="notes-input" placeholder="Scratchpad…">${esc(item.notes||'')}</textarea>
+          <textarea id="notes-input" placeholder="Scratchpad…">${esc(item.notes||'')}<\/textarea>
           <button class="notes-save" onclick="saveNotes()"><i class="ti ti-device-floppy"></i> Save notes</button>
         </div>
       </div>
@@ -3604,7 +3604,7 @@ function renderMain(){
 
   const tnHeader =
     '<div onclick="toggleTestNotesSection()" style="padding:9px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:700;color:#2a5570;background:#B8D8E8;text-transform:uppercase;letter-spacing:.08em;">'+
-      '<span><i class="ti ti-flask" style="font-size:12px;"></i> Test &middot; Notes</span>'+
+      '<span><i class="ti ti-flask" style="font-size:12px;"></i> Test · Notes</span>'+
       '<i class="ti ti-chevron-'+(testNotesCollapsed?'up':'down')+'" style="font-size:14px;"></i>'+
     '</div>';
 
@@ -3612,13 +3612,14 @@ function renderMain(){
     '<div style="padding:12px 14px;display:flex;flex-direction:column;gap:14px;max-height:240px;overflow-y:auto;">'+
       '<div style="display:flex;flex-direction:column;gap:5px;">'+
         '<label style="font-size:11px;font-weight:600;color:var(--text-secondary);">Run test</label>'+
-        '<textarea id="test-input" placeholder="Paste a sample input&hellip;" style="padding:8px 10px;border:1.5px solid var(--border-mid);border-radius:8px;font-family:inherit;font-size:12px;resize:vertical;min-height:48px;background:#fff;color:var(--text-primary);"></textarea>'+
+        '<textarea id="test-input" placeholder="Paste a sample input…" style="padding:8px 10px;border:1.5px solid var(--border-mid);border-radius:8px;font-family:inherit;font-size:12px;resize:vertical;min-height:48px;background:#fff;color:var(--text-primary);"><\/textarea>'+
         '<button class="run-btn" id="run-btn" onclick="runTest()" style="align-self:flex-start;padding:6px 14px;background:var(--ts-navy);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;"><i class="ti ti-player-play" style="font-size:12px;"></i> Run test</button>'+
       '</div>'+
       '<div style="display:flex;flex-direction:column;gap:5px;">'+
         '<label style="font-size:11px;font-weight:600;color:var(--text-secondary);">Thoughts on skill / map</label>'+
-        '<textarea id="notes-input" placeholder="Jot down thoughts&hellip;" style="padding:8px 10px;border:1.5px solid var(--border-mid);border-radius:8px;font-family:inherit;font-size:12px;resize:vertical;min-height:64px;background:#fff;color:var(--text-primary);">'+esc(item.notes||'')+'</textarea>'+
-        '<button class="notes-save" onclick="saveNotes()" style="align-self:flex-start;padding:6px 14px;background:var(--ts-navy);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;"><i class="ti ti-device-floppy" style="font-size:12px;"></i> Save notes</button>'+
+        '<textarea id="notes-input" placeholder="Add a note… each save appends to the log below" style="padding:8px 10px;border:1.5px solid var(--border-mid);border-radius:8px;font-family:inherit;font-size:12px;resize:vertical;min-height:48px;background:#fff;color:var(--text-primary);"><\/textarea>'+
+        '<button class="notes-save" onclick="saveNotes()" style="align-self:flex-start;padding:6px 14px;background:var(--ts-navy);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;"><i class="ti ti-device-floppy" style="font-size:12px;"></i> Save note</button>'+
+        (item.notes?'<div style="margin-top:6px;padding:8px 10px;background:#f8f9fa;border:1.5px solid var(--border-mid);border-radius:8px;font-size:11px;color:var(--text-primary);white-space:pre-wrap;max-height:150px;overflow-y:auto;line-height:1.7;">'+esc(item.notes)+'</div>':'')+
       '</div>'+
     '</div>';
 
@@ -3641,10 +3642,17 @@ async function setColor(c){const item=getSelected();if(!item)return;item.color=c
 async function setIcon(ic){const item=getSelected();if(!item)return;item.icon=ic;item.updatedAt=Date.now();if(S.selLib==='personal')await saveP();else await saveSh();pickerOpen=true;rerender();renderMain();}
 async function saveNotes(){
   const item=getSelected();const el=document.getElementById('notes-input');if(!item||!el)return;
-  item.notes=el.value;item.updatedAt=Date.now();
+  const newNote=el.value.trim();
+  if(!newNote) return;
+  const now=new Date();
+  const ts=now.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' '+now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  const bullet='\u2022 ['+ts+'] '+newNote;
+  item.notes=item.notes?item.notes+'\n'+bullet:bullet;
+  item.updatedAt=Date.now();
+  el.value='';
   if(S.selLib==='personal')await saveP();else await saveSh();
   const btn=document.querySelector('.notes-save');
-  if(btn){btn.innerHTML='<i class="ti ti-check"></i> Saved';setTimeout(()=>{btn.innerHTML='<i class="ti ti-device-floppy"></i> Save notes';},1200);}
+  if(btn){btn.innerHTML='<i class="ti ti-check"></i> Saved';setTimeout(()=>{btn.innerHTML='<i class="ti ti-device-floppy"></i> Save note';},1200);}
   rerender();
 }
 async function disconnectSkill(agentId,skillId){
@@ -3822,7 +3830,7 @@ function showCtxMenu(e, itemId) {
   const item = allItems().find(i=>i.id===itemId);
   if(!item) return;
   const currentFolder = getItemFolder(itemId);
-  const foldersAvail = folders.filter(f=>f.id!==(currentFolder&&currentFolder.id));
+  const foldersAvail = folders.filter(f=>f.id!==(currentFolder&¤tFolder.id));
   
   const menu = document.createElement('div');
   menu.className = 'ctx-menu';
