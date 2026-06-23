@@ -235,6 +235,37 @@ function renderMapCanvas(){
   renderNodes(map);
   renderEdges(map);
   updateUndoBtn();
+  setupPortHover();
+}
+
+function setupPortHover(){
+  const wrap = document.getElementById('map-canvas-wrap');
+  if(!wrap || wrap._portHoverAttached) return;
+  wrap._portHoverAttached = true;
+
+  wrap.addEventListener('mousemove', (e) => {
+    const map = getActiveMap();
+    if(!map) return;
+    const rect = wrap.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const RADIUS = 40; // show ports when within 40px of node center
+
+    map.nodes.forEach(node => {
+      const sz = node.size || 60;
+      const cx = node.x + sz/2;
+      const cy = node.y + sz/2;
+      const dist = Math.sqrt((mx-cx)**2 + (my-cy)**2);
+      const ports = document.querySelectorAll('#mn_'+node.id+' .map-port');
+      ports.forEach(p => {
+        p.style.opacity = dist < (sz/2 + RADIUS) ? '1' : '0';
+      });
+    });
+  });
+
+  wrap.addEventListener('mouseleave', () => {
+    document.querySelectorAll('.map-port').forEach(p => p.style.opacity = '0');
+  });
 }
 
 function renderNodes(map){
@@ -258,7 +289,7 @@ function renderNodes(map){
     const size = node.size || 60;
     const emojiSize = Math.round(size * 0.4);
     // Ports sit exactly on the icon box border (the 3px bordered square)
-    const portStyle = 'position:absolute;width:12px;height:12px;background:#fff;border:2px solid '+hex+';border-radius:50%;cursor:crosshair;z-index:30;opacity:0;transition:opacity .15s;';
+    const portStyle = 'position:absolute;width:12px;height:12px;background:#fff;border:2px solid '+hex+';border-radius:50%;cursor:crosshair;z-index:30;opacity:0;transition:opacity .12s;';
     const halfSize = size/2;
     // The iconbox IS the bordered square - ports on its edges
     const isSelected = window._selectedNodeIds.has(node.id);
