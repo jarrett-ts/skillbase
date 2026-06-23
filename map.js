@@ -4,6 +4,8 @@ let maps = [];
 let activeMapId = null;
 let mapSectionOpen = false;
 
+console.log('🔵 map.js loaded');
+
 // ── TYPE TO EMOJI MAPPING ──────────────────────────────────────────────────
 const typeEmojis = {
   'output': '📦',
@@ -31,16 +33,28 @@ function colorHex(c){
 }
 
 function loadMaps(){
+  console.log('📍 loadMaps called');
   try { maps = JSON.parse(localStorage.getItem(MAP_KEY)||'[]'); } catch(e){ maps=[]; }
+  console.log('✓ Loaded ' + maps.length + ' maps');
   if(!activeMapId && maps.length) activeMapId = maps[0].id;
   renderMapList();
 }
 
 function saveMaps(){
-  try { localStorage.setItem(MAP_KEY, JSON.stringify(maps)); } catch(e){}
+  console.log('💾 saveMaps called');
+  try { 
+    localStorage.setItem(MAP_KEY, JSON.stringify(maps));
+    console.log('✓ Saved');
+  } catch(e){
+    console.error('❌ Save failed:', e);
+  }
 }
 
-function getActiveMap(){ return maps.find(m=>m.id===activeMapId)||null; }
+function getActiveMap(){ 
+  const map = maps.find(m=>m.id===activeMapId);
+  console.log('🔍 getActiveMap:', map ? map.name : 'none');
+  return map;
+}
 
 function newMap(){
   const name = prompt('Map name:','Untitled map');
@@ -65,6 +79,7 @@ function deleteMap(id, e){
 }
 
 function selectMap(id){
+  console.log('✓ Selected map:', id);
   activeMapId = id;
   renderMapList();
   if(mapSectionOpen) renderMapCanvas();
@@ -72,7 +87,7 @@ function selectMap(id){
 
 function renderMapList(){
   const list = document.getElementById('map-list');
-  if(!list) return;
+  if(!list) { console.error('❌ map-list not found'); return; }
   list.innerHTML = maps.map(m=>`
     <div class="map-item ${m.id===activeMapId?'active':''}" onclick="selectMap('${m.id}')">
       <span>${esc(m.name)}</span>
@@ -82,14 +97,19 @@ function renderMapList(){
 }
 
 function renderMapCanvas(){
+  console.log('🎨 renderMapCanvas called');
   const wrap = document.getElementById('map-canvas-wrap');
-  if(!wrap) return;
+  if(!wrap) { console.error('❌ map-canvas-wrap not found'); return; }
+  
   const map = getActiveMap();
   if(!map){
+    console.log('❌ No active map');
     wrap.innerHTML = `<div class="map-empty-msg">No map selected</div>`;
     wrap.classList.add('empty-state');
     return;
   }
+  
+  console.log('✓ Rendering map:', map.name, 'nodes:', map.nodes.length);
   wrap.classList.remove('empty-state');
   
   wrap.innerHTML = `
@@ -97,26 +117,37 @@ function renderMapCanvas(){
       <button class="map-tool-btn" onclick="openCreateItemModal()" title="Create new item"><i class="ti ti-circle-plus"></i> Create Item</button>
       <button class="map-tool-btn" onclick="saveMaps(); alert('Saved!');" title="Save"><i class="ti ti-device-floppy"></i></button>
     </div>
-    <svg id="map-svg" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;"></svg>
     <div id="map-nodes-layer" style="position:absolute;top:0;left:0;width:100%;height:100%;"></div>
   `;
   
   renderNodes(map);
-  renderEdges(map);
+  console.log('✓ renderMapCanvas complete');
 }
 
 function renderNodes(map){
+  console.log('📍 renderNodes called with', map.nodes.length, 'nodes');
   const layer = document.getElementById('map-nodes-layer');
-  if(!layer) return;
+  if(!layer) { 
+    console.error('❌ map-nodes-layer not found in DOM'); 
+    return; 
+  }
   
-  // Make sure S exists
-  if(typeof S === 'undefined') return;
+  if(typeof S === 'undefined' || !S) { 
+    console.error('❌ S is not defined'); 
+    return; 
+  }
   
   const allItems = [...(S.personal||[]),...(S.shared||[])].filter(i=>!i.archived);
+  console.log('✓ Found', allItems.length, 'total items');
   
-  layer.innerHTML = map.nodes.map(node=>{
+  const html = map.nodes.map((node, idx)=>{
+    console.log('  Node', idx, ':', node.itemId);
     const item = allItems.find(i=>i.id===node.itemId);
-    if(!item) return '';
+    if(!item) { 
+      console.warn('  ⚠️ Item not found:', node.itemId); 
+      return ''; 
+    }
+    console.log('  ✓ Found:', item.name);
     const hex = colorHex(item.color||'gray');
     return `<div class="map-node" style="left:${node.x}px;top:${node.y}px;position:absolute;cursor:move;" onmousedown="startNodeDrag(event,'${node.id}')">
       <div style="background:#FFFFFF;color:#666;border:3px solid ${hex};display:flex;align-items:center;justify-content:center;font-size:24px;width:60px;height:60px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
@@ -126,13 +157,21 @@ function renderNodes(map){
       <div style="font-size:9px;text-align:center;color:#999;">${item.type}</div>
     </div>`;
   }).join('');
+  
+  layer.innerHTML = html;
+  console.log('✓ Rendered', map.nodes.length, 'nodes');
 }
 
-function renderEdges(map){}
-
 function openCreateItemModal(){
+  console.log('🔵 openCreateItemModal called');
   const map = getActiveMap();
-  if(!map) { alert('Create a map first'); return; }
+  if(!map) { 
+    console.error('❌ No active map'); 
+    alert('Create a map first'); 
+    return; 
+  }
+  
+  console.log('✓ Creating modal for map:', map.name);
   
   const modal = document.createElement('div');
   modal.id = 'create-item-modal';
@@ -183,14 +222,17 @@ function openCreateItemModal(){
 }
 
 function confirmCreateItem(){
+  console.log('🔵 confirmCreateItem called');
   const map = getActiveMap();
-  if(!map) return;
+  if(!map) { console.error('❌ No map'); return; }
   
   const name = document.getElementById('modal-name').value.trim();
   if(!name) { alert('Please enter a name'); return; }
   
   const type = document.getElementById('modal-type').value;
   const color = document.getElementById('modal-color').value;
+  
+  console.log('📝 Creating item:', name, type, color);
   
   // Create item
   const item = {
@@ -203,10 +245,17 @@ function confirmCreateItem(){
   };
   
   // Add to S.personal
-  if(typeof S === 'undefined' || !S) return;
+  if(typeof S === 'undefined' || !S) { 
+    console.error('❌ S not defined'); 
+    return; 
+  }
+  
   if(!S.personal) S.personal = [];
   S.personal.push(item);
+  console.log('✓ Added to S.personal, total:', S.personal.length);
+  
   localStorage.setItem('sb_skills_v2', JSON.stringify(S));
+  console.log('✓ Saved S to localStorage');
   
   // Add to map
   const col = map.nodes.length % 3;
@@ -215,24 +264,37 @@ function confirmCreateItem(){
   const y = 50 + row * 120;
   
   map.nodes.push({id:'n_'+Date.now(), itemId: item.id, x, y});
+  console.log('✓ Added to map.nodes, total:', map.nodes.length);
+  
   saveMaps();
   
   // Close modal and render
+  console.log('🎨 Calling renderMapCanvas');
   document.getElementById('create-item-modal').remove();
   renderMapCanvas();
+  console.log('✓ confirmCreateItem complete');
 }
 
 function addItemToMap(itemId){
-  if(!mapSectionOpen) return;
+  console.log('🔵 addItemToMap called with:', itemId);
+  if(!mapSectionOpen) { 
+    console.log('⚠️ mapSectionOpen is false'); 
+    return; 
+  }
   const map = getActiveMap();
-  if(!map) return;
+  if(!map) { 
+    console.error('❌ No map'); 
+    return; 
+  }
   
+  console.log('✓ Adding to map:', map.name);
   const col = map.nodes.length % 3;
   const row = Math.floor(map.nodes.length / 3);
   const x = 50 + col * 200;
   const y = 50 + row * 120;
   
   map.nodes.push({id:'n_'+Date.now(), itemId, x, y});
+  console.log('✓ Added, total nodes:', map.nodes.length);
   saveMaps();
   renderMapCanvas();
 }
@@ -265,18 +327,12 @@ function startNodeDrag(event, nodeId){
   document.addEventListener('mouseup', handleUp);
 }
 
-function removeNodeFromMap(nodeId){
-  const map = getActiveMap();
-  if(!map) return;
-  map.nodes = map.nodes.filter(n=>n.id!==nodeId);
-  saveMaps();
-  renderMapCanvas();
-}
-
 function toggleMapSection(id){
+  console.log('🔵 toggleMapSection called');
   const elem = document.getElementById(id);
   if(!elem) return;
   mapSectionOpen = !mapSectionOpen;
+  console.log('✓ mapSectionOpen:', mapSectionOpen);
   if(mapSectionOpen){
     elem.classList.remove('collapsed');
     elem.classList.add('expanded');
