@@ -379,13 +379,14 @@ function renderEdges(map){
     const p1 = getPortPos(fromNode, fromPort);
     const p2 = getPortPos(toNode, toPort);
     
-    // Pull the arrow endpoint back slightly so the arrowhead tip sits right at the port
-    const backoff = 6;
+    // Fixed gap between arrowhead tip and box edge regardless of box size
+    // 16px = arrowhead length(10) + desired visual gap(6)
+    const GAP = 16;
     let endX = p2.x, endY = p2.y;
-    if(toPort==='right'){ endX = p2.x + backoff; }
-    else if(toPort==='left'){ endX = p2.x - backoff; }
-    else if(toPort==='top'){ endY = p2.y - backoff; }
-    else if(toPort==='bottom'){ endY = p2.y + backoff; }
+    if(toPort==='right'){ endX = p2.x + GAP; }
+    else if(toPort==='left'){ endX = p2.x - GAP; }
+    else if(toPort==='top'){ endY = p2.y - GAP; }
+    else if(toPort==='bottom'){ endY = p2.y + GAP; }
     
     // Bezier curve control points
     const dx = Math.abs(p2.x - p1.x);
