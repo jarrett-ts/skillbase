@@ -3641,7 +3641,7 @@ function renderMain(){
   const bodyContent = (viewMode === 'map') ? mapBody : mainContent;
 
   const tnHeader =
-    '<div onclick="toggleTestNotesSection()" style="padding:9px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:700;color:#2a5570;background:#B8D8E8;text-transform:uppercase;letter-spacing:.08em;">'+
+    '<div onclick="toggleTestNotesSection()" style="padding:9px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:700;color:#2a5570;background:#D0EDD8;text-transform:uppercase;letter-spacing:.08em;">'+
       '<span><i class="ti ti-flask" style="font-size:12px;"></i> Test · Notes</span>'+
       '<i class="ti ti-chevron-'+(testNotesCollapsed?'up':'down')+'" style="font-size:14px;"></i>'+
     '</div>';
