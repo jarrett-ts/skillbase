@@ -660,6 +660,27 @@ function removeNodeFromMap(nodeId){
   renderMapCanvas();
 }
 
+function toggleMapsSection(){
+  const body=document.getElementById('maps-body');
+  const chevron=document.getElementById('maps-chevron');
+  if(!body)return;
+  const isOpen=body.style.maxHeight!=='0px'&&body.style.maxHeight!=='';
+  body.style.maxHeight=isOpen?'0px':'500px';
+  if(chevron)chevron.style.transform=isOpen?'rotate(180deg)':'rotate(0deg)';
+}
+
+function addMapFolder(){
+  const name=prompt('Map folder name:');
+  if(!name)return;
+  const list=document.getElementById('map-list');
+  if(!list)return;
+  const el=document.createElement('div');
+  el.className='map-folder-header';
+  el.style.cssText='padding:5px 8px;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-top:6px;display:flex;align-items:center;gap:4px;border-top:1px solid var(--border-mid);';
+  el.innerHTML='<i class="ti ti-folder" style="font-size:11px"></i>'+name;
+  list.appendChild(el);
+}
+
 function toggleMapSection(id){
   const elem = document.getElementById(id);
   if(!elem) return;
