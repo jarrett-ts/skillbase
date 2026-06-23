@@ -530,9 +530,6 @@ function openCreateItemModal(){
           <option value="blue" selected>Blue</option>
           <option value="purple">Purple</option>
           <option value="navy">Navy</option>
-          <option value="maroon">Maroon</option>
-          <option value="orange">Orange</option>
-          <option value="green">Green</option>
           <option value="gray">Gray</option>
         </select>
       </div>
