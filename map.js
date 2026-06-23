@@ -156,10 +156,12 @@ function renderMapList(){
 // ── ADD SKILL TO MAP (ALLOW MULTIPLE INSTANCES) ────────────────────────────
 function addItemToMap(itemId){
   try {
-    console.log('addItemToMap called with:', itemId);
+    console.log('🔵 addItemToMap called with:', itemId);
+    console.log('   mapSectionOpen:', mapSectionOpen);
+    console.log('   activeMapId:', activeMapId);
     
     if(!mapSectionOpen) { 
-      console.log('Map section not open. mapSectionOpen =', mapSectionOpen);
+      console.log('❌ Map section not open');
       return;
     }
     
@@ -203,8 +205,14 @@ function addItemToMap(itemId){
 
 // ── CREATE NEW SKILL DIRECTLY ON CANVAS ────────────────────────────────────
 function createSkillOnCanvas(){
+  console.log('🔵 createSkillOnCanvas called');
   const map = getActiveMap();
-  if(!map) { alert('Create a map first'); return; }
+  if(!map) { 
+    console.error('❌ No active map');
+    alert('Create a map first'); 
+    return; 
+  }
+  console.log('✓ Active map found:', map.name);
   
   // Show modal dialog to create a new skill
   const modalHTML = `
@@ -353,12 +361,28 @@ function closeCreateSkillModal(){
 }
 
 function confirmCreateSkillOnCanvas(){
-  const name = document.getElementById('create-skill-name').value.trim();
-  const type = document.getElementById('create-skill-type').value;
-  const color = document.getElementById('create-skill-color').value;
-  const description = document.getElementById('create-skill-desc').value.trim();
+  console.log('🔵 confirmCreateSkillOnCanvas called');
+  const nameEl = document.getElementById('create-skill-name');
+  const typeEl = document.getElementById('create-skill-type');
+  const colorEl = document.getElementById('create-skill-color');
+  const descEl = document.getElementById('create-skill-desc');
+  
+  console.log('Form elements found:', {
+    name: !!nameEl,
+    type: !!typeEl,
+    color: !!colorEl,
+    desc: !!descEl
+  });
+  
+  const name = nameEl ? nameEl.value.trim() : '';
+  const type = typeEl ? typeEl.value : '';
+  const color = colorEl ? colorEl.value : '';
+  const description = descEl ? descEl.value.trim() : '';
+  
+  console.log('Form values:', { name, type, color, description });
   
   if(!name){
+    console.error('❌ No name provided');
     alert('Please enter a skill name');
     return;
   }
@@ -402,13 +426,18 @@ function confirmCreateSkillOnCanvas(){
   const y = 40 + row * 120;
   
   pushUndo();
+  console.log('📍 About to add to map. newItem:', newItem);
+  console.log('📍 Map.nodes before:', map.nodes.length);
   try {
     map.nodes.push({id:'n_'+Date.now(), itemId: newItem.id, x, y});
     console.log(`✓ Created new item "${name}" (${type}). Total items: ${map.nodes.length}`);
+    console.log('✓ Node added successfully');
   } catch(e) {
-    console.error('Error creating item on map:', e);
+    console.error('❌ Error creating item on map:', e);
   }
+  console.log('💾 About to save maps');
   saveMaps();
+  console.log('✓ Maps saved');
   
   // Update skill list and re-render
   if(typeof renderSkillsUI === 'function') renderSkillsUI();
