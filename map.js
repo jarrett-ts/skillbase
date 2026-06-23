@@ -88,6 +88,7 @@ function setupGlobalDropHandler(){
   if(_dropHandlerInstalled) return;
   _dropHandlerInstalled = true;
   let _justDropped = false;
+  let _capturedDragId = '';
   console.log('[DND] Global drop handler installed');
   
   // Track last pointer position during drag (dragover gives coords)
@@ -95,7 +96,16 @@ function setupGlobalDropHandler(){
   document.addEventListener('dragover', (e) => { _lastDragX = e.clientX; _lastDragY = e.clientY; }, true);
   
   document.addEventListener('dragstart', (e) => {
-    console.log('[DND] dragstart on:', e.target.className || e.target.tagName);
+    // Capture the item id NOW, before app.js clears dragState
+    const itemEl = e.target.closest ? e.target.closest('.item[data-id]') : null;
+    if(itemEl){
+      _capturedDragId = itemEl.getAttribute('data-id');
+    } else if(typeof dragState !== 'undefined' && dragState && dragState.id){
+      _capturedDragId = dragState.id;
+    } else {
+      _capturedDragId = '';
+    }
+    console.log('[DND] dragstart captured id:', _capturedDragId);
   });
   
   // PRIMARY mechanism: dragend always fires. Check if released over a canvas wrap.
@@ -106,11 +116,9 @@ function setupGlobalDropHandler(){
     const wrap = el && el.closest ? el.closest('.map-canvas-wrap') : null;
     if(!wrap){ console.log('[DND] dragend: not over canvas'); return; }
     
-    let itemId = '';
-    if(typeof dragState !== 'undefined' && dragState && dragState.id){
-      itemId = dragState.id;
-    }
+    const itemId = _capturedDragId;
     console.log('[DND] dragend itemId:', itemId);
+    _capturedDragId = ''; // reset for next drag
     if(!itemId){ console.log('[DND] dragend: no itemId'); return; }
     
     const m = getActiveMap();
@@ -140,12 +148,8 @@ function setupGlobalDropHandler(){
     
     let itemId = '';
     try { itemId = e.dataTransfer.getData('text/plain'); } catch(err) {}
-    console.log('[DND] itemId from dataTransfer:', itemId);
-    console.log('[DND] dragState:', typeof dragState !== 'undefined' ? JSON.stringify(dragState) : 'undefined');
-    if((!itemId) && typeof dragState !== 'undefined' && dragState && dragState.id){
-      itemId = dragState.id;
-    }
-    console.log('[DND] final itemId:', itemId);
+    if(!itemId) itemId = _capturedDragId;
+    console.log('[DND] drop final itemId:', itemId);
     if(!itemId) { console.log('[DND] ABORT: no itemId'); return; }
     
     const m = getActiveMap();
