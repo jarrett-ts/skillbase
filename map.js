@@ -136,22 +136,46 @@ function renderMapList(){
 // ── ADD SKILL TO MAP (ALLOW MULTIPLE INSTANCES) ────────────────────────────
 function addItemToMap(itemId){
   try {
-    if(!mapSectionOpen) return;
+    console.log('addItemToMap called with:', itemId);
+    
+    if(!mapSectionOpen) { 
+      console.log('Map section not open. mapSectionOpen =', mapSectionOpen);
+      return;
+    }
+    
     const map = getActiveMap();
-    if(!map) { alert('Create a map first'); return; }
-    // NOW ALLOWS MULTIPLE INSTANCES OF SAME SKILL!
+    if(!map) { 
+      console.error('No active map. activeMapId =', activeMapId);
+      alert('Create a map first'); 
+      return; 
+    }
+    
+    console.log('Adding to map:', map.name);
+    
     const item = [...S.personal, ...S.shared].find(i=>i.id===itemId);
-    if(!item) { console.error('Item not found:', itemId); return; }
+    if(!item) { 
+      console.error('Item not found in S.personal or S.shared:', itemId); 
+      return; 
+    }
+    
+    console.log('Found item:', item.name);
+    
+    // NOW ALLOWS MULTIPLE INSTANCES OF SAME SKILL!
     // place in a grid-ish pattern
     const col = map.nodes.length % 3;
     const row = Math.floor(map.nodes.length / 3);
     const x = 40 + col * 200;
     const y = 40 + row * 120;
+    
     pushUndo();
     map.nodes.push({id:'n_'+Date.now(), itemId, x, y});
     console.log(`✓ Added "${item.name}" to map. Total nodes: ${map.nodes.length}`);
+    
     saveMaps();
     renderMapCanvas();
+    enableEdgeDeletion();
+    enableNodeResize();
+    
   } catch(e) {
     console.error('Error adding item to map:', e);
   }
@@ -389,13 +413,15 @@ function getEmojiForType(type){
 
 function renderMapCanvas(){
   const wrap = document.getElementById('map-canvas-wrap');
-  if(!wrap) return;
+  if(!wrap) { console.warn('Map canvas wrap not found'); return; }
   const map = getActiveMap();
   if(!map){
     wrap.innerHTML = `<div class="map-empty-msg">No map selected</div><div class="map-empty-hint">Create a map using the Maps section in the sidebar</div>`;
     wrap.classList.add('empty-state');
+    console.log('No active map');
     return;
   }
+  console.log('Rendering map:', map.name);
   wrap.classList.remove('empty-state');
 
   const isEmpty = map.nodes.length===0;
@@ -886,6 +912,37 @@ function setupNodeResize(){
 function enableNodeResize(){
   loadIconSizes();
   setTimeout(() => setupNodeResize(), 50);
+}
+
+
+
+// ── TOGGLE MAP SECTION VISIBILITY ──────────────────────────────────────────
+function toggleMapSection(elementId){
+  const elem = document.getElementById(elementId);
+  const chevron = document.getElementById('map-section-chevron');
+  
+  if(elem){
+    if(elem.classList.contains('collapsed')){
+      elem.classList.remove('collapsed');
+      elem.classList.add('expanded');
+      mapSectionOpen = true;
+      console.log('Map section opened');
+    } else {
+      elem.classList.add('collapsed');
+      elem.classList.remove('expanded');
+      mapSectionOpen = false;
+      console.log('Map section closed');
+    }
+  }
+  
+  if(chevron){
+    chevron.classList.toggle('open');
+  }
+  
+  // Re-render if a map is active
+  if(activeMapId && mapSectionOpen){
+    renderMapCanvas();
+  }
 }
 
 
