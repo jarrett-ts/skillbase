@@ -53,16 +53,20 @@ function getEmojiForType(type){
 
 // ── SAFE COLOR HEX FUNCTION ────────────────────────────────────────────────
 function colorHex(c){
-  // Check app.js COLORS object first (for sidebar-dragged skills)
-  if(typeof COLORS !== 'undefined' && COLORS[c]) return COLORS[c];
-  // Full fallback map for all colors including map-only ones
-  const allColors = {
-    'navy': '#1E3570', 'teal': '#0E6E5C', 'purple': '#4A2080',
-    'coral': '#C44A20', 'amber': '#B87800', 'gray': '#4A5060',
-    'blue': '#2952A3', 'pink': '#982060',
-    'maroon': '#8B2252', 'green': '#2D9E5F', 'orange': '#E07020',
+  const map = {
+    'navy':   '#1E3570',
+    'teal':   '#0E6E5C',
+    'purple': '#7B2FBE',
+    'coral':  '#C44A20',
+    'amber':  '#B87800',
+    'gray':   '#6B7280',
+    'blue':   '#2952A3',
+    'pink':   '#982060',
+    'maroon': '#9B1D42',
+    'green':  '#16A34A',
+    'orange': '#EA6C00',
   };
-  return allColors[c] || '#4A5060';
+  return map[c] || '#6B7280';
 }
 
 function loadMaps(){
