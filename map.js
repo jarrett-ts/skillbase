@@ -112,8 +112,11 @@ function renderMapList(){
   if(!list) return;
   list.innerHTML = window.maps.map(m=>`
     <div class="map-item ${m.id===window.activeMapId?'active':''}" onclick="selectMap('${m.id}')">
-      <span>${esc(m.name)}</span>
-      <button onclick="deleteMap('${m.id}',event)" title="Delete"><i class="ti ti-trash" style="font-size:11px"></i></button>
+      <div class="map-item-row">
+        <div class="item-icon" style="background:#E8F4F8;color:#2952A3;"><i class="ti ti-map-2" style="font-size:11px;"></i></div>
+        <span class="map-item-name">${esc(m.name)}</span>
+        <button class="map-item-del" onclick="deleteMap('${m.id}',event)" title="Delete" style="background:none;border:none;cursor:pointer;padding:2px;opacity:0.4;color:var(--text-muted);"><i class="ti ti-trash" style="font-size:11px"></i></button>
+      </div>
     </div>
   `).join('');
 }
