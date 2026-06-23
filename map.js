@@ -41,6 +41,8 @@ function undoMap(){
 function loadMaps(){
   try { maps = JSON.parse(localStorage.getItem(MAP_KEY)||'[]'); } catch(e){ maps=[]; }
   if(!activeMapId && maps.length) activeMapId = maps[0].id;
+  // Render the map list after loading (fixes visibility issue)
+  renderMapList();
 }
 function saveMaps(){
   try { localStorage.setItem(MAP_KEY, JSON.stringify(maps)); } catch(e){}
@@ -148,7 +150,7 @@ function createSkillOnCanvas(){
         max-width: 450px;
         box-shadow: 0 10px 40px rgba(0,0,0,0.2);
       ">
-        <h3 style="margin: 0 0 16px 0; font-size: 18px; color: var(--color-text-primary);">Create New Skill</h3>
+        <h3 style="margin: 0 0 16px 0; font-size: 18px; color: var(--color-text-primary);">Create New Item</h3>
         
         <div style="margin-bottom: 16px;">
           <label style="display: block; font-size: 12px; font-weight: 600; color: var(--color-text-secondary); margin-bottom: 6px;">Skill Name *</label>
@@ -181,10 +183,11 @@ function createSkillOnCanvas(){
               box-sizing: border-box;
             "
           >
-            <option value="core">Core</option>
-            <option value="workflow">Workflow</option>
-            <option value="integration">Integration</option>
-            <option value="utility">Utility</option>
+            <option value="output">📤 Output</option>
+            <option value="input">📥 Input</option>
+            <option value="skill">🎯 Skill</option>
+            <option value="agent">🤖 Agent</option>
+            <option value="description">📝 Description</option>
           </select>
         </div>
         
@@ -201,13 +204,13 @@ function createSkillOnCanvas(){
               box-sizing: border-box;
             "
           >
-            <option value="blue">Blue</option>
-            <option value="purple">Purple</option>
-            <option value="teal">Teal</option>
-            <option value="pink">Pink</option>
-            <option value="orange">Orange</option>
-            <option value="green">Green</option>
-            <option value="gray">Gray</option>
+            <option value="blue">🔵 Blue</option>
+            <option value="purple">🟣 Purple</option>
+            <option value="teal">🔷 Teal</option>
+            <option value="pink">🔴 Pink</option>
+            <option value="orange">🟠 Orange</option>
+            <option value="green">🟢 Green</option>
+            <option value="gray">⚫ Gray</option>
           </select>
         </div>
         
@@ -344,7 +347,7 @@ function renderMapCanvas(){
   wrap.innerHTML = `
     <div class="map-toolbar">
       <button class="map-tool-btn" id="map-undo-btn" onclick="undoMap()" title="Undo (Cmd/Ctrl+Z)"><i class="ti ti-arrow-back-up" style="font-size:12px"></i> Undo</button>
-      <button class="map-tool-btn" onclick="createSkillOnCanvas()" title="Create new skill on map"><i class="ti ti-circle-plus" style="font-size:12px"></i> Create Skill</button>
+      <button class="map-tool-btn" onclick="createSkillOnCanvas()" title="Create new item on map"><i class="ti ti-circle-plus" style="font-size:12px"></i> Create Item</button>
       <span class="map-hint" style="font-size:11px;color:var(--text-muted);background:rgba(255,255,255,.85);padding:5px 9px;border-radius:7px;border:1px solid var(--border-mid);">Drag a side dot → another card to connect</span>
       <button class="map-tool-btn" onclick="clearMapEdges()" title="Clear connections"><i class="ti ti-eraser" style="font-size:12px"></i></button>
       <button class="map-tool-btn" onclick="clearMap()" title="Clear all"><i class="ti ti-trash" style="font-size:12px"></i> Clear</button>
@@ -413,7 +416,7 @@ function renderNodes(map){
       onmousedown="startNodeDrag(event,'${node.id}')">
       <button class="map-node-del" onclick="removeNodeFromMap('${node.id}')" title="Remove"><i class="ti ti-x"></i></button>
       <div class="map-node-header">
-        <div class="map-node-icon" style="background:${hex}20;color:${hex};border:1px solid ${hex}30;">
+        <div class="map-node-icon" style="background:#FFFFFF;color:#666;border:3px solid ${hex};">
           <i class="ti ${item.icon||'ti-puzzle'}" style="font-size:11px"></i>
         </div>
         <span class="map-node-name">${esc(item.name)}</span>
