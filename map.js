@@ -440,8 +440,14 @@ function confirmCreateSkillOnCanvas(){
   console.log('✓ Maps saved');
   
   // Update skill list and re-render
-  if(typeof renderSkillsUI === 'function') renderSkillsUI();
+  console.log('🎨 Re-rendering UI');
+  if(typeof renderSkillsUI === 'function') { 
+    console.log('✓ renderSkillsUI called');
+    renderSkillsUI(); 
+  }
+  console.log('🎨 Re-rendering canvas');
   renderMapCanvas();
+  console.log('✓ Canvas rendered');
 }
 
 // ── CANVAS RENDER ───────────────────────────────────────────────────────────
@@ -540,12 +546,18 @@ function initMapResize(handle, wrap){
 
 function renderNodes(map){
   const layer = document.getElementById('map-nodes-layer');
-  if(!layer) return;
+  if(!layer) { console.error('❌ map-nodes-layer not found'); return; }
   const allItems = [...S.personal,...S.shared].filter(i=>!i.archived);
-  layer.innerHTML = map.nodes.map(node=>{
+  console.log('📍 renderNodes: ' + map.nodes.length + ' nodes to render');
+  layer.innerHTML = map.nodes.map((node, idx)=>{
     const item = allItems.find(i=>i.id===node.itemId);
-    if(!item) return '';
-    const hex = colorHex(item.color||'gray');
+    if(!item) { 
+      console.warn('⚠️  Node ' + idx + ' item not found: ' + node.itemId); 
+      return ''; 
+    }
+    try {
+      const hex = colorHex(item.color||'gray');
+      console.log('✓ Node ' + idx + ': ' + item.name + ' (color: ' + hex + ')');
     const badgeClass = 'b-'+item.type;
     return `<div class="map-node" id="mn_${node.id}"
       style="left:${node.x}px;top:${node.y}px;"
