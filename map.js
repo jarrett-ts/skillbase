@@ -313,4 +313,12 @@ function cleanupOrphanedNodes(){
   alert('Removed ' + removed + ' orphaned items. ' + map.nodes.length + ' valid items remain.');
 }
 
-function esc(s){ return (s+'').replace(/[&<>"']/g, c => ({'&':'&','<':'<','>':'>','"':'"',"'":'''}[c])); }
+function esc(s){
+  if(s === null || s === undefined) return '';
+  return String(s)
+    .split('&').join(String.fromCharCode(38,97,109,112,59))
+    .split('<').join(String.fromCharCode(38,108,116,59))
+    .split('>').join(String.fromCharCode(38,103,116,59))
+    .split('"').join(String.fromCharCode(38,113,117,111,116,59))
+    .split("'").join(String.fromCharCode(38,35,51,57,59));
+}
