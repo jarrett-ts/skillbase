@@ -841,83 +841,78 @@ let _marqueeInstalled = false;
 function installMarquee(){
   if(_marqueeInstalled) return;
   _marqueeInstalled = true;
+  // Attach directly to the canvas wrap element (not document)
+  // so we don't have to worry about closest() on SVG children
+  const attachToWrap = () => {
+    const wrap = document.getElementById('map-canvas-wrap');
+    if(!wrap || wrap._marqueeAttached) return;
+    wrap._marqueeAttached = true;
 
-  document.addEventListener('mousedown', (e) => {
-    if(e.button !== 0) return;
-    // Check if click is inside a canvas wrap
-    const wrap = e.target.closest('.map-canvas-wrap');
-    if(!wrap) return;
-    // Don't start marquee if clicking on toolbar
-    if(e.target.closest('.map-toolbar')) return;
-    // Temporarily check if click lands on a node by checking DOM elements
-    const els = document.elementsFromPoint(e.clientX, e.clientY);
-    if(els.some(el => el.classList && el.classList.contains('map-node'))) return;
+    let _dsx=0, _dsy=0, _dragging=false, _boxEl=null;
 
-    const rect = wrap.getBoundingClientRect();
-    _marqueeStartX = e.clientX - rect.left;
-    _marqueeStartY = e.clientY - rect.top;
-    _marqueeActive = true;
+    wrap.addEventListener('mousedown', (e) => {
+      if(e.button !== 0) return;
+      if(e.target.closest('.map-toolbar')) return;
+      // Check if over a node bbox
+      const map = getActiveMap();
+      if(!map) return;
+      const rect = wrap.getBoundingClientRect();
+      const px = e.clientX - rect.left;
+      const py = e.clientY - rect.top;
+      const overNode = map.nodes.some(n => {
+        const sz = (n.size||60) + 16;
+        return px >= n.x-8 && px <= n.x+sz && py >= n.y-8 && py <= n.y+sz;
+      });
+      if(overNode) return;
 
-    _marqueeEl = document.createElement('div');
-    _marqueeEl.id = 'marquee-rect';
-    _marqueeEl.style.cssText = `position:absolute;border:2px dashed #00B4D8;background:rgba(0,180,216,0.06);pointer-events:none;z-index:500;left:${_marqueeStartX}px;top:${_marqueeStartY}px;width:0;height:0;`;
-    wrap.appendChild(_marqueeEl);
-  });
+      _dsx = e.clientX; _dsy = e.clientY;
+      _dragging = true;
+      _boxEl = document.createElement('div');
+      _boxEl.style.cssText = 'position:fixed;border:2px dashed #00B4D8;background:rgba(0,180,216,0.07);pointer-events:none;z-index:9999;left:'+_dsx+'px;top:'+_dsy+'px;width:0;height:0;';
+      document.body.appendChild(_boxEl);
+      e.preventDefault();
+    });
 
-  document.addEventListener('mousemove', (e) => {
-    if(!_marqueeActive || !_marqueeEl) return;
-    const wrap = _marqueeEl.parentElement;
-    if(!wrap) return;
-    const rect = wrap.getBoundingClientRect();
-    const curX = e.clientX - rect.left;
-    const curY = e.clientY - rect.top;
-    const x = Math.min(_marqueeStartX, curX);
-    const y = Math.min(_marqueeStartY, curY);
-    const w = Math.abs(curX - _marqueeStartX);
-    const h = Math.abs(curY - _marqueeStartY);
-    _marqueeEl.style.left = x + 'px';
-    _marqueeEl.style.top = y + 'px';
-    _marqueeEl.style.width = w + 'px';
-    _marqueeEl.style.height = h + 'px';
-  });
+    document.addEventListener('mousemove', (e) => {
+      if(!_dragging || !_boxEl) return;
+      const x=Math.min(_dsx,e.clientX), y=Math.min(_dsy,e.clientY);
+      const w=Math.abs(e.clientX-_dsx), h=Math.abs(e.clientY-_dsy);
+      _boxEl.style.left=x+'px'; _boxEl.style.top=y+'px';
+      _boxEl.style.width=w+'px'; _boxEl.style.height=h+'px';
+    });
 
-  document.addEventListener('mouseup', (e) => {
-    if(!_marqueeActive) return;
-    _marqueeActive = false;
-
-    if(_marqueeEl){
-      const wrap = _marqueeEl.parentElement;
-      if(wrap && _marqueeEl){
-        const rect = wrap.getBoundingClientRect();
-        const curX = e.clientX - rect.left;
-        const curY = e.clientY - rect.top;
-        const selX = Math.min(_marqueeStartX, curX);
-        const selY = Math.min(_marqueeStartY, curY);
-        const selW = Math.abs(curX - _marqueeStartX);
-        const selH = Math.abs(curY - _marqueeStartY);
-
-        // Only select if actually dragged a meaningful distance (lowered threshold)
-        if(selW > 10 && selH > 10){
-          window._selectedNodeIds.clear();
-          window._selectedNodeId = null;
-          const map = getActiveMap();
-          if(map){
-            map.nodes.forEach(node => {
-              const sz = node.size || 60;
-              if(node.x < selX + selW && node.x + sz > selX &&
-                 node.y < selY + selH && node.y + sz > selY){
-                window._selectedNodeIds.add(node.id);
-                window._selectedNodeId = node.id;
-              }
-            });
-          }
-          highlightSelected();
+    document.addEventListener('mouseup', (e) => {
+      if(!_dragging) return;
+      _dragging = false;
+      if(_boxEl){ _boxEl.remove(); _boxEl=null; }
+      const selW=Math.abs(e.clientX-_dsx), selH=Math.abs(e.clientY-_dsy);
+      if(selW<10 || selH<10) return;
+      const rect = wrap.getBoundingClientRect();
+      const selX=Math.min(_dsx,e.clientX)-rect.left;
+      const selY=Math.min(_dsy,e.clientY)-rect.top;
+      const selX2=selX+selW, selY2=selY+selH;
+      const map = getActiveMap();
+      if(!map) return;
+      window._selectedNodeIds.clear();
+      window._selectedNodeId = null;
+      map.nodes.forEach(node => {
+        const sz = node.size||60;
+        if(node.x<selX2 && node.x+sz>selX && node.y<selY2 && node.y+sz>selY){
+          window._selectedNodeIds.add(node.id);
+          window._selectedNodeId = node.id;
         }
-      }
-      _marqueeEl.remove();
-      _marqueeEl = null;
-    }
-  });
+      });
+      highlightSelected();
+    });
+  };
+
+  // Attach now and re-attach after each render (wrap gets recreated)
+  attachToWrap();
+  const _origRender = window.renderMapCanvas;
+  window.renderMapCanvas = function(){
+    _origRender && _origRender();
+    setTimeout(attachToWrap, 0);
+  };
 }
 
 function isPointOverNode(clientX, clientY, wrap, map){
