@@ -87,16 +87,48 @@ let _dropHandlerInstalled = false;
 function setupGlobalDropHandler(){
   if(_dropHandlerInstalled) return;
   _dropHandlerInstalled = true;
+  let _justDropped = false;
   console.log('[DND] Global drop handler installed');
+  
+  // Track last pointer position during drag (dragover gives coords)
+  let _lastDragX = 0, _lastDragY = 0;
+  document.addEventListener('dragover', (e) => { _lastDragX = e.clientX; _lastDragY = e.clientY; }, true);
   
   document.addEventListener('dragstart', (e) => {
     console.log('[DND] dragstart on:', e.target.className || e.target.tagName);
   });
   
+  // PRIMARY mechanism: dragend always fires. Check if released over a canvas wrap.
+  document.addEventListener('dragend', (e) => {
+    console.log('[DND] dragend - checking drop position');
+    if(_justDropped){ _justDropped = false; console.log('[DND] dragend: drop already handled it'); return; }
+    const el = document.elementFromPoint(_lastDragX, _lastDragY);
+    const wrap = el && el.closest ? el.closest('.map-canvas-wrap') : null;
+    if(!wrap){ console.log('[DND] dragend: not over canvas'); return; }
+    
+    let itemId = '';
+    if(typeof dragState !== 'undefined' && dragState && dragState.id){
+      itemId = dragState.id;
+    }
+    console.log('[DND] dragend itemId:', itemId);
+    if(!itemId){ console.log('[DND] dragend: no itemId'); return; }
+    
+    const m = getActiveMap();
+    if(!m){ console.log('[DND] dragend: no map'); return; }
+    const rect = wrap.getBoundingClientRect();
+    const x = _lastDragX - rect.left - 30;
+    const y = _lastDragY - rect.top - 30;
+    if(!m.nodes) m.nodes = [];
+    m.nodes.push({id:'n_'+Date.now(), itemId, x: Math.max(0,x), y: Math.max(0,y)});
+    console.log('[DND] dragend SUCCESS: added node, total', m.nodes.length);
+    saveMaps();
+    renderMapCanvas();
+  });
+  
   document.addEventListener('dragover', (e) => {
     const wrap = e.target.closest && e.target.closest('.map-canvas-wrap');
     if(wrap){ e.preventDefault(); if(e.dataTransfer) e.dataTransfer.dropEffect = 'copy'; }
-  });
+  }, true);
   
   document.addEventListener('drop', (e) => {
     console.log('[DND] DROP fired on:', e.target.className || e.target.tagName);
@@ -124,9 +156,10 @@ function setupGlobalDropHandler(){
     if(!m.nodes) m.nodes = [];
     m.nodes.push({id:'n_'+Date.now(), itemId, x: Math.max(0,x), y: Math.max(0,y)});
     console.log('[DND] SUCCESS: added node, total now', m.nodes.length);
+    _justDropped = true;
     saveMaps();
     renderMapCanvas();
-  });
+  }, true);
 }
 
 function renderMapCanvas(){
