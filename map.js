@@ -1,3 +1,18 @@
+// ── COLOR HEX MAPPING ────────────────────────────────────────────────────────
+const COLORS = {
+  'blue': '#00B4D8',
+  'purple': '#7209B7',
+  'teal': '#00D9FF',
+  'pink': '#FF006E',
+  'orange': '#FB5607',
+  'green': '#06A77D',
+  'gray': '#A0AEC0'
+};
+
+function colorHex(c){
+  return COLORS[c] || COLORS.gray;
+}
+
 // ── MAP CANVAS ─────────────────────────────────────────────────────────────
 const MAP_KEY = 'sb_maps_v1';
 let maps = [];          // [{id, name, nodes:[{id,itemId,x,y}], edges:[{from,to}]}]
@@ -448,8 +463,13 @@ function renderMapCanvas(){
   renderNodes(map);
   renderEdges(map);
   updateUndoBtn();
-  enableEdgeDeletion();
-  enableNodeResize();
+  
+  // Setup interactivity
+  setTimeout(() => {
+    enableEdgeDeletion();
+    enableNodeResize();
+    setupNodeResize();
+  }, 100);
 }
 
 function initMapResize(handle, wrap){
