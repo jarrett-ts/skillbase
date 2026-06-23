@@ -4,6 +4,28 @@ let maps = [];          // [{id, name, nodes:[{id,itemId,x,y}], edges:[{from,to}
 let activeMapId = null;
 let mapSectionOpen = false;
 
+// ── AUTOSAVE & ERROR HANDLING ──────────────────────────────────────────────
+let lastAutoSaveTime = Date.now();
+const AUTOSAVE_INTERVAL = 10000; // 10 seconds
+
+// Autosave maps regularly
+setInterval(() => {
+  if(maps.length > 0 && Date.now() - lastAutoSaveTime > AUTOSAVE_INTERVAL){
+    try {
+      localStorage.setItem(MAP_KEY, JSON.stringify(maps));
+      console.log('✓ Maps autosaved');
+      lastAutoSaveTime = Date.now();
+    }catch(e){
+      console.error('Autosave failed:', e);
+    }
+  }
+}, AUTOSAVE_INTERVAL);
+
+function markMapModified(){
+  lastAutoSaveTime = 0; // Force save on next interval
+}
+
+
 // canvas interaction state
 let canvasNodes = [];   // rendered nodes for active map
 let canvasEdges = [];
@@ -45,7 +67,13 @@ function loadMaps(){
   renderMapList();
 }
 function saveMaps(){
-  try { localStorage.setItem(MAP_KEY, JSON.stringify(maps)); } catch(e){}
+  try { 
+    localStorage.setItem(MAP_KEY, JSON.stringify(maps));
+    markMapModified();
+    console.log('✓ Map saved');
+  } catch(e){
+    console.error('Failed to save maps:', e);
+  }
 }
 function getActiveMap(){ return maps.find(m=>m.id===activeMapId)||null; }
 
@@ -107,19 +135,26 @@ function renderMapList(){
 
 // ── ADD SKILL TO MAP (ALLOW MULTIPLE INSTANCES) ────────────────────────────
 function addItemToMap(itemId){
-  if(!mapSectionOpen) return;
-  const map = getActiveMap();
-  if(!map) { alert('Create a map first'); return; }
-  // NOW ALLOWS MULTIPLE INSTANCES OF SAME SKILL!
-  // place in a grid-ish pattern
-  const col = map.nodes.length % 3;
-  const row = Math.floor(map.nodes.length / 3);
-  const x = 40 + col * 200;
-  const y = 40 + row * 120;
-  pushUndo();
-  map.nodes.push({id:'n_'+Date.now(), itemId, x, y});
-  saveMaps();
-  renderMapCanvas();
+  try {
+    if(!mapSectionOpen) return;
+    const map = getActiveMap();
+    if(!map) { alert('Create a map first'); return; }
+    // NOW ALLOWS MULTIPLE INSTANCES OF SAME SKILL!
+    const item = [...S.personal, ...S.shared].find(i=>i.id===itemId);
+    if(!item) { console.error('Item not found:', itemId); return; }
+    // place in a grid-ish pattern
+    const col = map.nodes.length % 3;
+    const row = Math.floor(map.nodes.length / 3);
+    const x = 40 + col * 200;
+    const y = 40 + row * 120;
+    pushUndo();
+    map.nodes.push({id:'n_'+Date.now(), itemId, x, y});
+    console.log(`✓ Added "${item.name}" to map. Total nodes: ${map.nodes.length}`);
+    saveMaps();
+    renderMapCanvas();
+  } catch(e) {
+    console.error('Error adding item to map:', e);
+  }
 }
 
 // ── CREATE NEW SKILL DIRECTLY ON CANVAS ────────────────────────────────────
@@ -323,7 +358,12 @@ function confirmCreateSkillOnCanvas(){
   const y = 40 + row * 120;
   
   pushUndo();
-  map.nodes.push({id:'n_'+Date.now(), itemId: newItem.id, x, y});
+  try {
+    map.nodes.push({id:'n_'+Date.now(), itemId: newItem.id, x, y});
+    console.log(`✓ Created new item "${name}" (${type}). Total items: ${map.nodes.length}`);
+  } catch(e) {
+    console.error('Error creating item on map:', e);
+  }
   saveMaps();
   
   // Update skill list and re-render
@@ -363,6 +403,7 @@ function renderMapCanvas(){
     <div class="map-toolbar">
       <button class="map-tool-btn" id="map-undo-btn" onclick="undoMap()" title="Undo (Cmd/Ctrl+Z)"><i class="ti ti-arrow-back-up" style="font-size:12px"></i> Undo</button>
       <button class="map-tool-btn" onclick="createSkillOnCanvas()" title="Create new item on map"><i class="ti ti-circle-plus" style="font-size:12px"></i> Create Item</button>
+      <button class="map-tool-btn" onclick="saveMaps(); alert('✓ Map saved!');" title="Save map to browser storage"><i class="ti ti-device-floppy" style="font-size:12px"></i></button>
       <span class="map-hint" style="font-size:11px;color:var(--text-muted);background:rgba(255,255,255,.85);padding:5px 9px;border-radius:7px;border:1px solid var(--border-mid);">Drag a side dot → another card to connect</span>
       <button class="map-tool-btn" onclick="clearMapEdges()" title="Clear connections"><i class="ti ti-eraser" style="font-size:12px"></i></button>
       <button class="map-tool-btn" onclick="clearMap()" title="Clear all"><i class="ti ti-trash" style="font-size:12px"></i> Clear</button>
