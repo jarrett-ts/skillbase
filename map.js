@@ -226,7 +226,7 @@ function renderNodes(map){
         <div class="map-port" style="${portStyle}right:-6px;top:${halfSize-6}px;" onmousedown="startConnect(event,'${node.id}','right')" title="Connect"></div>
         <div class="map-resize" style="position:absolute;bottom:-6px;right:-6px;width:14px;height:14px;background:${hex};border-radius:50%;cursor:nwse-resize;z-index:30;display:flex;align-items:center;justify-content:center;" onmousedown="startResize(event,'${node.id}')" title="Resize"><span style="color:white;font-size:8px;">⤡</span></div>
       </div>
-      <div style="font-size:13px;margin-top:8px;text-align:center;max-width:${Math.max(size,90)}px;font-weight:500;cursor:text;pointer-events:auto;" ondblclick="editNodeLabel(event,'${node.id}')" title="Double-click to rename">${esc(node.label || item.name)}</div>
+      <div class="map-node-label" data-node-id="${node.id}" style="font-size:13px;margin-top:8px;text-align:center;max-width:${Math.max(size,90)}px;font-weight:500;cursor:text;pointer-events:auto;border-radius:4px;padding:1px 4px;outline:none;" ondblclick="startInlineEdit(event,'${node.id}')" title="Double-click to rename">${esc(node.label || item.name)}</div>
       <div style="font-size:11px;text-align:center;color:#999;">${item.type}</div>
     </div>`;
   }).join('');
@@ -523,31 +523,59 @@ function startNodeDrag(event, nodeId){
   document.addEventListener('mouseup', handleUp);
 }
 
-function editNodeLabel(event, nodeId){
+function startInlineEdit(event, nodeId){
   event.stopPropagation();
   event.preventDefault();
-  const map = getActiveMap();
-  if(!map) return;
-  const node = map.nodes.find(n=>n.id===nodeId);
-  if(!node) return;
+  const el = event.currentTarget;
   
-  // Find the current displayed name
-  const allItems = [...(S.personal||[]),...(S.shared||[])].filter(i=>!i.archived);
-  const item = allItems.find(i=>i.id===node.itemId);
-  const currentName = node.label || (item ? item.name : '');
+  // Make it editable and focus
+  el.setAttribute('contenteditable', 'true');
+  el.style.background = '#fff';
+  el.style.boxShadow = '0 0 0 2px #00B4D8';
+  el.focus();
   
-  const newName = prompt('Rename this item (only changes it on the map):', currentName);
-  if(newName === null) return; // cancelled
+  // Select all text inside
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
   
-  const trimmed = newName.trim();
-  if(trimmed === '' || (item && trimmed === item.name)){
-    // Empty or same as original - remove the override so it falls back to skill name
-    delete node.label;
-  } else {
-    node.label = trimmed;
-  }
-  saveMaps();
-  renderMapCanvas();
+  const finish = (save) => {
+    el.removeAttribute('contenteditable');
+    el.style.background = '';
+    el.style.boxShadow = '';
+    el.removeEventListener('blur', onBlur);
+    el.removeEventListener('keydown', onKey);
+    
+    if(save){
+      const map = getActiveMap();
+      if(map){
+        const node = map.nodes.find(n=>n.id===nodeId);
+        if(node){
+          const allItems = [...(S.personal||[]),...(S.shared||[])].filter(i=>!i.archived);
+          const item = allItems.find(i=>i.id===node.itemId);
+          const newName = el.textContent.trim();
+          if(newName === '' || (item && newName === item.name)){
+            delete node.label;
+          } else {
+            node.label = newName;
+          }
+          saveMaps();
+        }
+      }
+    }
+    renderMapCanvas();
+  };
+  
+  const onBlur = () => finish(true);
+  const onKey = (e) => {
+    if(e.key === 'Enter'){ e.preventDefault(); el.blur(); }
+    else if(e.key === 'Escape'){ e.preventDefault(); finish(false); }
+  };
+  
+  el.addEventListener('blur', onBlur);
+  el.addEventListener('keydown', onKey);
 }
 
 function removeNodeFromMap(nodeId){
