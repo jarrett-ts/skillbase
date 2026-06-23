@@ -96,8 +96,8 @@ function renderMapCanvas(){
     <div class="map-toolbar">
       <button class="map-tool-btn" onclick="openCreateItemModal()" title="Create new item"><i class="ti ti-circle-plus"></i> Create Item</button>
       <button class="map-tool-btn" onclick="saveMaps(); alert('Saved!');" title="Save"><i class="ti ti-device-floppy"></i> Save</button>
-      <button class="map-tool-btn" onclick="cleanupOrphanedNodes()" title="Remove broken items" style="background:#FFA500;color:white;">Clean Up</button>
-      <button class="map-tool-btn" onclick="clearAllNodes()" title="Clear everything" style="background:#FF4444;color:white;">Clear All</button>
+      <button class="map-tool-btn" onclick="cleanupOrphanedNodes()" title="Remove broken items">Clean Up</button>
+      <button class="map-tool-btn" onclick="clearAllNodes()" title="Clear everything">Clear All</button>
     </div>
     <svg id="map-svg" style="position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible;"></svg>
     <div id="map-nodes-layer" style="position:absolute;top:0;left:0;width:100%;height:100%;"></div>
@@ -120,19 +120,53 @@ function renderNodes(map){
     const item = allItems.find(i=>i.id===node.itemId);
     if(!item) return '';
     const hex = colorHex(item.color||'gray');
-    const portStyle = 'position:absolute;width:12px;height:12px;background:#fff;border:2px solid '+hex+';border-radius:50%;cursor:crosshair;z-index:10;';
-    return `<div class="map-node" id="mn_${node.id}" style="left:${node.x}px;top:${node.y}px;position:absolute;cursor:move;" onmousedown="startNodeDrag(event,'${node.id}')">
-      <div style="position:relative;background:#FFFFFF;color:#666;border:3px solid ${hex};display:flex;align-items:center;justify-content:center;font-size:24px;width:60px;height:60px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
-        ${getEmojiForType(item.type || 'skill')}
-        <div class="map-port" style="${portStyle}top:-7px;left:24px;" onmousedown="startConnect(event,'${node.id}','top')" title="Connect"></div>
-        <div class="map-port" style="${portStyle}bottom:-7px;left:24px;" onmousedown="startConnect(event,'${node.id}','bottom')" title="Connect"></div>
-        <div class="map-port" style="${portStyle}left:-7px;top:24px;" onmousedown="startConnect(event,'${node.id}','left')" title="Connect"></div>
-        <div class="map-port" style="${portStyle}right:-7px;top:24px;" onmousedown="startConnect(event,'${node.id}','right')" title="Connect"></div>
+    const size = node.size || 60;
+    const emojiSize = Math.round(size * 0.4);
+    // Ports positioned on the icon-box edges, centered
+    const portStyle = 'position:absolute;width:12px;height:12px;background:#fff;border:2px solid '+hex+';border-radius:50%;cursor:crosshair;z-index:20;';
+    const halfSize = size/2;
+    return `<div class="map-node" id="mn_${node.id}" style="left:${node.x}px;top:${node.y}px;position:absolute;">
+      <div class="map-node-iconbox" style="position:relative;width:${size}px;height:${size}px;cursor:move;" onmousedown="startNodeDrag(event,'${node.id}')">
+        <div style="width:${size}px;height:${size}px;background:#FFFFFF;color:#666;border:3px solid ${hex};display:flex;align-items:center;justify-content:center;font-size:${emojiSize}px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.1);box-sizing:border-box;">
+          ${getEmojiForType(item.type || 'skill')}
+        </div>
+        <div class="map-port" style="${portStyle}top:-7px;left:${halfSize-6}px;" onmousedown="startConnect(event,'${node.id}','top')" title="Connect"></div>
+        <div class="map-port" style="${portStyle}bottom:-7px;left:${halfSize-6}px;" onmousedown="startConnect(event,'${node.id}','bottom')" title="Connect"></div>
+        <div class="map-port" style="${portStyle}left:-7px;top:${halfSize-6}px;" onmousedown="startConnect(event,'${node.id}','left')" title="Connect"></div>
+        <div class="map-port" style="${portStyle}right:-7px;top:${halfSize-6}px;" onmousedown="startConnect(event,'${node.id}','right')" title="Connect"></div>
+        <div class="map-resize" style="position:absolute;bottom:-3px;right:-3px;width:14px;height:14px;background:${hex};border-radius:50%;cursor:nwse-resize;z-index:20;display:flex;align-items:center;justify-content:center;" onmousedown="startResize(event,'${node.id}')" title="Resize"><span style="color:white;font-size:8px;">⤡</span></div>
       </div>
-      <div style="font-size:11px;margin-top:8px;text-align:center;max-width:80px;font-weight:500;">${esc(item.name)}</div>
+      <div style="font-size:11px;margin-top:8px;text-align:center;max-width:${Math.max(size,80)}px;font-weight:500;">${esc(item.name)}</div>
       <div style="font-size:9px;text-align:center;color:#999;">${item.type}</div>
     </div>`;
   }).join('');
+}
+
+function startResize(event, nodeId){
+  event.preventDefault();
+  event.stopPropagation();
+  const map = getActiveMap();
+  if(!map) return;
+  const node = map.nodes.find(n=>n.id===nodeId);
+  if(!node) return;
+  
+  const startX = event.clientX;
+  const startSize = node.size || 60;
+  
+  const handleMove = (e) => {
+    const delta = e.clientX - startX;
+    node.size = Math.max(40, Math.min(160, startSize + delta));
+    renderMapCanvas();
+  };
+  
+  const handleUp = () => {
+    document.removeEventListener('mousemove', handleMove);
+    document.removeEventListener('mouseup', handleUp);
+    saveMaps();
+  };
+  
+  document.addEventListener('mousemove', handleMove);
+  document.addEventListener('mouseup', handleUp);
 }
 
 function renderEdges(map){
@@ -147,15 +181,16 @@ function renderEdges(map){
     const fromPort = edge.fromPort || 'right';
     const toPort = edge.toPort || 'left';
     
-    // Node is 60px wide icon, center is at x+30, y+30
+    // Use node size for port positions
     const getPortPos = (node, port) => {
-      const cx = node.x + 30;
-      const cy = node.y + 30;
+      const sz = node.size || 60;
+      const cx = node.x + sz/2;
+      const cy = node.y + sz/2;
       switch(port){
         case 'top': return {x: cx, y: node.y};
-        case 'bottom': return {x: cx, y: node.y + 60};
+        case 'bottom': return {x: cx, y: node.y + sz};
         case 'left': return {x: node.x, y: cy};
-        case 'right': return {x: node.x + 60, y: cy};
+        case 'right': return {x: node.x + sz, y: cy};
         default: return {x: cx, y: cy};
       }
     };
@@ -200,12 +235,13 @@ function startConnect(event, nodeId, port){
     const fromNode = map.nodes.find(n=>n.id===nodeId);
     if(!fromNode) return;
     
-    const cx = fromNode.x + 30, cy = fromNode.y + 30;
+    const sz = fromNode.size || 60;
+    const cx = fromNode.x + sz/2, cy = fromNode.y + sz/2;
     let x1 = cx, y1 = cy;
     if(port==='top'){ y1 = fromNode.y; }
-    else if(port==='bottom'){ y1 = fromNode.y + 60; }
+    else if(port==='bottom'){ y1 = fromNode.y + sz; }
     else if(port==='left'){ x1 = fromNode.x; }
-    else if(port==='right'){ x1 = fromNode.x + 60; }
+    else if(port==='right'){ x1 = fromNode.x + sz; }
     
     const wrap = document.getElementById('map-canvas-wrap');
     const rect = wrap.getBoundingClientRect();
