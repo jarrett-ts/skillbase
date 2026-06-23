@@ -65,6 +65,8 @@ function loadMaps(){
   try { maps = JSON.parse(localStorage.getItem(MAP_KEY)||'[]'); } catch(e){ maps=[]; }
   if(!activeMapId && maps.length) activeMapId = maps[0].id;
   renderMapList();
+  // Install marquee selection once
+  installMarquee();
 }
 
 function saveMaps(){
@@ -225,7 +227,6 @@ function renderMapCanvas(){
   
   renderNodes(map);
   renderEdges(map);
-  setupMarquee(wrap);
   updateUndoBtn();
 }
 
@@ -644,6 +645,8 @@ function removeNodeFromMap(nodeId){
   if(!map) return;
   pushUndo();
   map.nodes = map.nodes.filter(n=>n.id!==nodeId);
+  // Also remove any edges connected to this node
+  map.edges = (map.edges||[]).filter(e => e.from !== nodeId && e.to !== nodeId);
   saveMaps();
   renderMapCanvas();
 }
@@ -766,7 +769,12 @@ document.addEventListener('keydown', (e) => {
     const map = getActiveMap();
     if(map && _selectedNodeIds.size > 0){
       pushUndo();
+      // Remove selected nodes
       map.nodes = map.nodes.filter(n => !_selectedNodeIds.has(n.id));
+      // Remove any edges connected to deleted nodes
+      map.edges = (map.edges||[]).filter(edge =>
+        !_selectedNodeIds.has(edge.from) && !_selectedNodeIds.has(edge.to)
+      );
       saveMaps();
       renderMapCanvas();
     }
@@ -785,73 +793,101 @@ document.addEventListener('click', (e) => {
 });
 
 // ── MARQUEE SELECTION ────────────────────────────────────────────────────────
-function setupMarquee(wrap){
-  let marqueeEl = null;
-  let startX = 0, startY = 0;
+// ── MARQUEE SELECTION (set up once globally) ────────────────────────────────
+let _marqueeEl = null;
+let _marqueeStartX = 0, _marqueeStartY = 0;
+let _marqueeInstalled = false;
 
-  wrap.addEventListener('mousedown', (e) => {
-    // Only start marquee on empty canvas area (not on nodes/buttons/ports)
-    if(e.target.closest('.map-node') || e.target.closest('.map-toolbar') || 
-       e.target.closest('.map-port') || e.target.closest('.map-resize')) return;
+function installMarquee(){
+  if(_marqueeInstalled) return;
+  _marqueeInstalled = true;
+
+  document.addEventListener('mousedown', (e) => {
     if(e.button !== 0) return;
+    // Check if click is inside a canvas wrap
+    const wrap = e.target.closest('.map-canvas-wrap');
+    if(!wrap) return;
+    // Don't start marquee if clicking on interactive elements
+    // Use element coordinates to check if over a node
+    if(e.target.closest('.map-toolbar')) return;
+    // Check if any node contains this point by looking at map data
+    const map = getActiveMap();
+    if(map && isPointOverNode(e.clientX, e.clientY, wrap, map)) return;
 
     const rect = wrap.getBoundingClientRect();
-    startX = e.clientX - rect.left;
-    startY = e.clientY - rect.top;
+    _marqueeStartX = e.clientX - rect.left;
+    _marqueeStartY = e.clientY - rect.top;
     _marqueeActive = true;
 
-    marqueeEl = document.createElement('div');
-    marqueeEl.style.cssText = `position:absolute;border:2px dashed #00B4D8;background:rgba(0,180,216,0.08);pointer-events:none;z-index:1000;left:${startX}px;top:${startY}px;width:0;height:0;`;
-    wrap.appendChild(marqueeEl);
+    _marqueeEl = document.createElement('div');
+    _marqueeEl.id = 'marquee-rect';
+    _marqueeEl.style.cssText = `position:absolute;border:2px dashed #00B4D8;background:rgba(0,180,216,0.06);pointer-events:none;z-index:500;left:${_marqueeStartX}px;top:${_marqueeStartY}px;width:0;height:0;`;
+    wrap.appendChild(_marqueeEl);
   });
 
   document.addEventListener('mousemove', (e) => {
-    if(!_marqueeActive || !marqueeEl) return;
+    if(!_marqueeActive || !_marqueeEl) return;
+    const wrap = _marqueeEl.parentElement;
+    if(!wrap) return;
     const rect = wrap.getBoundingClientRect();
     const curX = e.clientX - rect.left;
     const curY = e.clientY - rect.top;
-    const x = Math.min(startX, curX);
-    const y = Math.min(startY, curY);
-    const w = Math.abs(curX - startX);
-    const h = Math.abs(curY - startY);
-    marqueeEl.style.left = x + 'px';
-    marqueeEl.style.top = y + 'px';
-    marqueeEl.style.width = w + 'px';
-    marqueeEl.style.height = h + 'px';
+    const x = Math.min(_marqueeStartX, curX);
+    const y = Math.min(_marqueeStartY, curY);
+    const w = Math.abs(curX - _marqueeStartX);
+    const h = Math.abs(curY - _marqueeStartY);
+    _marqueeEl.style.left = x + 'px';
+    _marqueeEl.style.top = y + 'px';
+    _marqueeEl.style.width = w + 'px';
+    _marqueeEl.style.height = h + 'px';
   });
 
   document.addEventListener('mouseup', (e) => {
-    if(!_marqueeActive || !marqueeEl) return;
+    if(!_marqueeActive) return;
     _marqueeActive = false;
 
-    const rect = wrap.getBoundingClientRect();
-    const curX = e.clientX - rect.left;
-    const curY = e.clientY - rect.top;
-    const selX = Math.min(startX, curX);
-    const selY = Math.min(startY, curY);
-    const selW = Math.abs(curX - startX);
-    const selH = Math.abs(curY - startY);
+    if(_marqueeEl){
+      const wrap = _marqueeEl.parentElement;
+      if(wrap && _marqueeEl){
+        const rect = wrap.getBoundingClientRect();
+        const curX = e.clientX - rect.left;
+        const curY = e.clientY - rect.top;
+        const selX = Math.min(_marqueeStartX, curX);
+        const selY = Math.min(_marqueeStartY, curY);
+        const selW = Math.abs(curX - _marqueeStartX);
+        const selH = Math.abs(curY - _marqueeStartY);
 
-    // Only select if dragged a meaningful distance
-    if(selW > 5 || selH > 5){
-      _selectedNodeIds.clear();
-      const map = getActiveMap();
-      if(map){
-        map.nodes.forEach(node => {
-          const sz = node.size || 60;
-          const nx = node.x, ny = node.y;
-          // Check if node overlaps with selection rectangle
-          if(nx < selX + selW && nx + sz > selX && ny < selY + selH && ny + sz > selY){
-            _selectedNodeIds.add(node.id);
-            _selectedNodeId = node.id;
+        // Only select if actually dragged (not just a click)
+        if(selW > 8 && selH > 8){
+          _selectedNodeIds.clear();
+          _selectedNodeId = null;
+          const map = getActiveMap();
+          if(map){
+            map.nodes.forEach(node => {
+              const sz = node.size || 60;
+              if(node.x < selX + selW && node.x + sz > selX &&
+                 node.y < selY + selH && node.y + sz > selY){
+                _selectedNodeIds.add(node.id);
+                _selectedNodeId = node.id;
+              }
+            });
           }
-        });
+          highlightSelected();
+        }
       }
-      highlightSelected();
+      _marqueeEl.remove();
+      _marqueeEl = null;
     }
+  });
+}
 
-    marqueeEl.remove();
-    marqueeEl = null;
+function isPointOverNode(clientX, clientY, wrap, map){
+  const rect = wrap.getBoundingClientRect();
+  const x = clientX - rect.left;
+  const y = clientY - rect.top;
+  return map.nodes.some(node => {
+    const sz = (node.size || 60) + 20; // small padding for ports/resize handle
+    return x >= node.x - 10 && x <= node.x + sz && y >= node.y - 10 && y <= node.y + sz;
   });
 }
 
