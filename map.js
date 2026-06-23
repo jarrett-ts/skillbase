@@ -479,7 +479,33 @@ function confirmCreateItem(){
   if(typeof S === 'undefined' || !S) return;
   if(!S.personal) S.personal = [];
   S.personal.push(item);
+  
+  // Save to localStorage
   localStorage.setItem('sb_skills_v2', JSON.stringify(S));
+  
+  // POST directly to Supabase as a new record (saveP only patches existing records)
+  if(typeof sbFetch === 'function'){
+    const row = {
+      id: item.id,
+      type: item.type,
+      name: item.name,
+      author: (typeof S !== 'undefined' && S.personal[0] && S.personal[0].author) || 'User',
+      color: item.color,
+      icon: item.icon || 'ti-puzzle',
+      description: '',
+      prompt: '',
+      notes: '',
+      archived: false,
+      runs: [],
+      connected_skills: [],
+      updated_at: new Date().toISOString()
+    };
+    sbFetch('skills', {
+      method: 'POST',
+      headers: {'Prefer': 'return=minimal'},
+      body: JSON.stringify(row)
+    }).catch(e => console.warn('Could not save to Supabase:', e));
+  }
   
   // Add to map
   const col = map.nodes.length % 3;
