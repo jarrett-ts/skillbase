@@ -15,7 +15,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 #app{display:flex;height:100vh;overflow:hidden;}
 
 /* â”€â”€ Sidebar â”€â”€ */
-.sidebar{flex-shrink:0;background:#D4E8F0;border-right:1.5px solid var(--border-mid);display:flex;flex-direction:column;overflow:hidden;transition:width .2s ease;position:relative;}
+.sidebar{flex-shrink:0;background:#B8D8E8;border-right:1.5px solid var(--border-mid);display:flex;flex-direction:column;overflow:hidden;transition:width .2s ease;position:relative;}
 .sidebar.expanded{width:var(--sidebar-w,240px);min-width:180px;max-width:380px;}
 .sidebar.collapsed{width:0;border-right:none;}
 .sidebar-inner{width:100%;min-width:180px;display:flex;flex-direction:column;height:100%;overflow:hidden;}
@@ -107,8 +107,8 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .main-scroll{overflow-y:auto;background:#FFFFFF;}
 
 /* â”€â”€ Collapsible sections (drawer, map, knowledge base) â”€â”€ */
-.section-header{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;background:var(--bg-surface);border-bottom:1.5px solid var(--border-mid);cursor:pointer;flex-shrink:0;user-select:none;}
-.section-header:hover{background:var(--bg-hover);}
+.section-header{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;background:#D0EDD8;border-bottom:1.5px solid var(--border-mid);cursor:pointer;flex-shrink:0;user-select:none;}
+.section-header:hover{background:#c0e0c8;}
 .section-title{font-size:10px;font-weight:700;color:var(--ts-navy);text-transform:uppercase;letter-spacing:.08em;display:flex;align-items:center;gap:7px;}
 .section-chevron{font-size:13px;color:var(--ts-navy);transition:transform .2s;}
 .section-chevron.open{transform:rotate(180deg);}
