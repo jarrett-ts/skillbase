@@ -3389,7 +3389,7 @@ function rerender(){
   }
   if(S.selected)renderMain();
   else{
-    document.getElementById('topbar').innerHTML=`<div class="topbar-left"><button class="icon-btn" onclick="toggleSidebar()"><i class="ti ti-layout-sidebar"></i></button><span style="font-size:14px;color:var(--text-muted)">Select an item</span></div>`;
+    document.getElementById('topbar').innerHTML='';
     document.getElementById('content-area').innerHTML='<div class="no-select">Select an agent or skill to view</div>';
   }
 }
@@ -3473,29 +3473,7 @@ function renderMain(){
   const testNotesCollapsed=window.testNotesCollapsed==null?true:window.testNotesCollapsed;
   const isPersonal=S.selLib==='personal';
   const hex=colorHex(item.color||'gray');
-  document.getElementById('topbar').innerHTML=`
-    <div class="topbar-left">
-      <button class="icon-btn" onclick="toggleSidebar()"><i class="ti ti-layout-sidebar"></i></button>
-      <div class="menu-wrap">
-        <button class="icon-btn" onclick="toggleMenu()"><i class="ti ti-adjustments-horizontal"></i></button>
-        <div class="menu-dropdown" id="action-menu">
-          <button class="menu-item" onclick="openInClaude();closeMenu()"><i class="ti ti-message" style="font-size:14px;color:#5A6280"></i> Open in Claude</button>
-          <button class="menu-item" onclick="editItem();closeMenu()"><i class="ti ti-pencil" style="font-size:14px;color:#5A6280"></i> Edit prompt</button>
-          ${isPersonal?`<button class="menu-item" onclick="publishToTeam();closeMenu()"><i class="ti ti-arrow-up" style="font-size:14px;color:#5A6280"></i> Publish to team</button>`:''}
-          <hr class="menu-divider">
-          <button class="menu-item" onclick="startRename('${item.id}');closeMenu()"><i class="ti ti-cursor-text" style="font-size:14px;color:#5A6280"></i> Rename</button>
-          <button class="menu-item danger" onclick="archiveItem('${item.id}','${S.selLib}');closeMenu()"><i class="ti ti-archive" style="font-size:14px"></i> Archive</button>
-        </div>
-      </div>
-      <div class="badge-stack">
-        <span class="badge b-${item.type}">${item.type}</span>
-        <span class="badge ${isPersonal?'b-personal':'b-shared'}">${isPersonal?'mine':'team'}</span>
-      </div>
-      <div class="item-icon-lg" style="background:${hex}18;color:${hex};border:1.5px solid ${hex}40;" onclick="openPicker()">
-        <i class="ti ${item.icon||'ti-puzzle'}" style="font-size:14px;"></i>
-      </div>
-      <span class="topbar-title">${esc(item.name)}</span>
-    </div>`;
+  // topbar is hidden - content moved to tabBar below
 
   const pickerHTML=pickerOpen?`
     <div class="picker-popup open">
@@ -3594,9 +3572,31 @@ function renderMain(){
     'color:'+(active?'var(--ts-navy)':'var(--text-secondary)')+';transition:all .12s;';
 
   const tabBar =
-    '<div style="display:flex;gap:8px;padding:10px 14px;border-bottom:1.5px solid var(--border-mid);background:#E0D0F0;flex-shrink:0;">'+
-      '<button onclick="switchViewMode(\'map\')" style="'+tabStyle(viewMode==='map')+'"><i class="ti ti-map-2" style="font-size:13px;"></i> Map</button>'+
-      '<button onclick="switchViewMode(\'skills\')" style="'+tabStyle(viewMode==='skills')+'"><i class="ti ti-books" style="font-size:13px;"></i> Skills</button>'+
+    '<div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1.5px solid var(--border-mid);background:#E0D0F0;flex-shrink:0;">'+
+      '<button class="icon-btn" onclick="toggleSidebar()" style="flex-shrink:0;"><i class="ti ti-layout-sidebar"></i></button>'+
+      '<div class="menu-wrap" style="flex-shrink:0;">'+
+        '<button class="icon-btn" onclick="toggleMenu()"><i class="ti ti-adjustments-horizontal"></i></button>'+
+        '<div class="menu-dropdown" id="action-menu">'+
+          '<button class="menu-item" onclick="openInClaude();closeMenu()"><i class="ti ti-message" style="font-size:14px;color:#5A6280"></i> Open in Claude</button>'+
+          '<button class="menu-item" onclick="editItem();closeMenu()"><i class="ti ti-pencil" style="font-size:14px;color:#5A6280"></i> Edit prompt</button>'+
+          (isPersonal?'<button class="menu-item" onclick="publishToTeam();closeMenu()"><i class="ti ti-arrow-up" style="font-size:14px;color:#5A6280"></i> Publish to team</button>':'')+
+          '<hr class="menu-divider">'+
+          '<button class="menu-item" onclick="startRename(\''+item.id+'\');closeMenu()"><i class="ti ti-cursor-text" style="font-size:14px;color:#5A6280"></i> Rename</button>'+
+          '<button class="menu-item danger" onclick="archiveItem(\''+item.id+'\',\''+S.selLib+'\');closeMenu()"><i class="ti ti-archive" style="font-size:14px"></i> Archive</button>'+
+        '</div>'+
+      '</div>'+
+      '<div class="badge-stack" style="flex-shrink:0;">'+
+        '<span class="badge b-'+item.type+'">'+item.type+'</span>'+
+        '<span class="badge '+(isPersonal?'b-personal':'b-shared')+'">'+(isPersonal?'mine':'team')+'</span>'+
+      '</div>'+
+      '<div class="item-icon-lg" style="background:'+hex+'18;color:'+hex+';border:1.5px solid '+hex+'40;flex-shrink:0;" onclick="openPicker()">'+
+        '<i class="ti '+(item.icon||'ti-puzzle')+'" style="font-size:14px;"></i>'+
+      '</div>'+
+      '<span class="topbar-title" style="flex:1;min-width:0;">'+esc(item.name)+'</span>'+
+      '<div style="display:flex;gap:8px;margin-left:auto;">'+
+        '<button onclick="switchViewMode(\'map\')" style="'+tabStyle(viewMode==='map')+'"><i class="ti ti-map-2" style="font-size:13px;"></i> Map</button>'+
+        '<button onclick="switchViewMode(\'skills\')" style="'+tabStyle(viewMode==='skills')+'"><i class="ti ti-books" style="font-size:13px;"></i> Skills</button>'+
+      '</div>'+
     '</div>';
 
   const mapBody = '<div id="map-canvas-wrap" class="map-canvas-wrap"></div>';
@@ -3830,7 +3830,7 @@ function showCtxMenu(e, itemId) {
   const item = allItems().find(i=>i.id===itemId);
   if(!item) return;
   const currentFolder = getItemFolder(itemId);
-  const foldersAvail = folders.filter(f=>f.id!==(currentFolder&&currentFolder.id));
+  const foldersAvail = folders.filter(f=>f.id!==(currentFolder&¤tFolder.id));
   
   const menu = document.createElement('div');
   menu.className = 'ctx-menu';
