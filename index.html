@@ -41,6 +41,12 @@
         <button class="add-btn" onclick="addNew('skill')"><i class="ti ti-plus" style="font-size:12px"></i> Skill</button>
       </div>
 
+      <!-- Drag handle between library and maps -->
+      <div id="map-section-resizer" style="height:8px;margin:2px 0;cursor:ns-resize;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:4px;transition:background .12s;" title="Drag to resize maps section"
+        onmouseover="this.style.background='var(--bg-hover)'" onmouseout="if(!this.classList.contains('dragging'))this.style.background=''">
+        <div style="width:32px;height:3px;background:var(--border-mid);border-radius:2px;"></div>
+      </div>
+
       <!-- Maps section -->
       <div class="maps-section">
         <div class="maps-section-header" onclick="toggleMapsSection()" style="cursor:pointer;user-select:none;">
