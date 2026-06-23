@@ -32,6 +32,15 @@
       </div>
       <div class="item-list" id="item-list"></div>
 
+      <!-- Add buttons + folder — in library section -->
+      <div style="padding:4px 10px 2px;">
+        <button class="add-folder-btn" onclick="addFolder()"><i class="ti ti-folder-plus" style="font-size:13px"></i> New folder</button>
+      </div>
+      <div class="add-btns">
+        <button class="add-btn" onclick="addNew('agent')"><i class="ti ti-plus" style="font-size:12px"></i> Agent</button>
+        <button class="add-btn" onclick="addNew('skill')"><i class="ti ti-plus" style="font-size:12px"></i> Skill</button>
+      </div>
+
       <!-- Maps section -->
       <div class="maps-section">
         <div class="maps-section-header" onclick="toggleMapsSection()" style="cursor:pointer;user-select:none;">
@@ -48,24 +57,11 @@
           </div>
         </div>
       </div>
-
-      <div style="padding:4px 10px 0;">
-        <button class="add-folder-btn" onclick="addFolder()"><i class="ti ti-folder-plus" style="font-size:13px"></i> New folder</button>
-      </div>
-      <div class="add-btns">
-        <button class="add-btn" onclick="addNew('agent')"><i class="ti ti-plus" style="font-size:12px"></i> Agent</button>
-        <button class="add-btn" onclick="addNew('skill')"><i class="ti ti-plus" style="font-size:12px"></i> Skill</button>
-      </div>
     </div>
   </div>
 
   <div class="main">
-    <div class="topbar" id="topbar">
-      <div class="topbar-left">
-        <button class="icon-btn" onclick="toggleSidebar()"><i class="ti ti-layout-sidebar"></i></button>
-        <span style="font-size:14px;color:var(--text-muted)">Select an item</span>
-      </div>
-    </div>
+    <div class="topbar" id="topbar" style="display:none;"></div>
     <div id="content-area" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
       <div class="no-select">Select an agent or skill to view</div>
     </div>
