@@ -841,55 +841,50 @@ let _marqueeInstalled = false;
 function installMarquee(){
   if(_marqueeInstalled) return;
   _marqueeInstalled = true;
-  // Attach directly to the canvas wrap element (not document)
-  // so we don't have to worry about closest() on SVG children
-  const attachToWrap = () => {
-    const wrap = document.getElementById('map-canvas-wrap');
-    if(!wrap || wrap._marqueeAttached) return;
-    wrap._marqueeAttached = true;
 
-    let _dsx=0, _dsy=0, _dragging=false, _boxEl=null;
+  const attach = () => {
+    const wrap = document.getElementById('map-canvas-wrap');
+    if(!wrap || wrap._mqAttached) return;
+    wrap._mqAttached = true;
+
+    let dsx=0, dsy=0, drag=false, box=null;
 
     wrap.addEventListener('mousedown', (e) => {
       if(e.button !== 0) return;
       if(e.target.closest('.map-toolbar')) return;
-      // Check if over a node bbox
       const map = getActiveMap();
       if(!map) return;
       const rect = wrap.getBoundingClientRect();
-      const px = e.clientX - rect.left;
-      const py = e.clientY - rect.top;
+      const px = e.clientX - rect.left, py = e.clientY - rect.top;
       const overNode = map.nodes.some(n => {
         const sz = (n.size||60) + 16;
         return px >= n.x-8 && px <= n.x+sz && py >= n.y-8 && py <= n.y+sz;
       });
       if(overNode) return;
-
-      _dsx = e.clientX; _dsy = e.clientY;
-      _dragging = true;
-      _boxEl = document.createElement('div');
-      _boxEl.style.cssText = 'position:fixed;border:2px dashed #00B4D8;background:rgba(0,180,216,0.07);pointer-events:none;z-index:9999;left:'+_dsx+'px;top:'+_dsy+'px;width:0;height:0;';
-      document.body.appendChild(_boxEl);
+      dsx = e.clientX; dsy = e.clientY; drag = true;
+      box = document.createElement('div');
+      box.style.cssText = 'position:fixed;border:2px dashed #00B4D8;background:rgba(0,180,216,0.07);pointer-events:none;z-index:9999;left:'+dsx+'px;top:'+dsy+'px;width:0;height:0;';
+      document.body.appendChild(box);
       e.preventDefault();
     });
 
     document.addEventListener('mousemove', (e) => {
-      if(!_dragging || !_boxEl) return;
-      const x=Math.min(_dsx,e.clientX), y=Math.min(_dsy,e.clientY);
-      const w=Math.abs(e.clientX-_dsx), h=Math.abs(e.clientY-_dsy);
-      _boxEl.style.left=x+'px'; _boxEl.style.top=y+'px';
-      _boxEl.style.width=w+'px'; _boxEl.style.height=h+'px';
+      if(!drag || !box) return;
+      const x=Math.min(dsx,e.clientX), y=Math.min(dsy,e.clientY);
+      box.style.left=x+'px'; box.style.top=y+'px';
+      box.style.width=Math.abs(e.clientX-dsx)+'px';
+      box.style.height=Math.abs(e.clientY-dsy)+'px';
     });
 
     document.addEventListener('mouseup', (e) => {
-      if(!_dragging) return;
-      _dragging = false;
-      if(_boxEl){ _boxEl.remove(); _boxEl=null; }
-      const selW=Math.abs(e.clientX-_dsx), selH=Math.abs(e.clientY-_dsy);
+      if(!drag) return;
+      drag = false;
+      if(box){ box.remove(); box=null; }
+      const selW=Math.abs(e.clientX-dsx), selH=Math.abs(e.clientY-dsy);
       if(selW<10 || selH<10) return;
       const rect = wrap.getBoundingClientRect();
-      const selX=Math.min(_dsx,e.clientX)-rect.left;
-      const selY=Math.min(_dsy,e.clientY)-rect.top;
+      const selX=Math.min(dsx,e.clientX)-rect.left;
+      const selY=Math.min(dsy,e.clientY)-rect.top;
       const selX2=selX+selW, selY2=selY+selH;
       const map = getActiveMap();
       if(!map) return;
@@ -906,13 +901,10 @@ function installMarquee(){
     });
   };
 
-  // Attach now and re-attach after each render (wrap gets recreated)
-  attachToWrap();
-  const _origRender = window.renderMapCanvas;
-  window.renderMapCanvas = function(){
-    _origRender && _origRender();
-    setTimeout(attachToWrap, 0);
-  };
+  attach();
+  // Re-attach after each render since innerHTML recreates the wrap's children
+  const orig = window.renderMapCanvas;
+  window.renderMapCanvas = function(){ orig && orig(); setTimeout(attach, 0); };
 }
 
 function isPointOverNode(clientX, clientY, wrap, map){
