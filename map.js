@@ -55,8 +55,8 @@ function colorHex(c){
     'navy': '#1E3570', 'teal': '#0E6E5C', 'purple': '#4A2080',
     'coral': '#C44A20', 'amber': '#B87800', 'gray': '#4A5060',
     'blue': '#2952A3', 'pink': '#982060',
-    // Our map-specific colors (renamed)
-    'maroon': '#982060', 'green': '#2D9E5F', 'orange': '#E07020',
+    // Map dropdown colors
+    'maroon': '#8B2252', 'green': '#2D9E5F', 'orange': '#E07020',
   };
   return allColors[c] || allColors['gray'];
 }
@@ -254,9 +254,10 @@ function renderNodes(map){
     const portStyle = 'position:absolute;width:12px;height:12px;background:#fff;border:2px solid '+hex+';border-radius:50%;cursor:crosshair;z-index:30;';
     const halfSize = size/2;
     // The iconbox IS the bordered square - ports on its edges
+    const isSelected = _selectedNodeIds.has(node.id);
     return `<div class="map-node" id="mn_${node.id}" style="left:${node.x}px;top:${node.y}px;position:absolute;pointer-events:auto;background:transparent;border:none;padding:0;min-width:0;max-width:none;box-shadow:none;border-radius:0;cursor:default;display:flex;flex-direction:column;align-items:center;" onclick="selectNode('${node.id}')">
       <div class="map-node-iconbox" style="position:relative;width:${size}px;height:${size}px;">
-        <div style="position:absolute;top:0;left:0;width:${size}px;height:${size}px;background:#FFFFFF;color:#666;border:3px solid ${hex};display:flex;align-items:center;justify-content:center;font-size:${emojiSize}px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.1);box-sizing:border-box;cursor:move;" onmousedown="startNodeDrag(event,'${node.id}')">
+        <div style="position:absolute;top:0;left:0;width:${size}px;height:${size}px;background:#FFFFFF;color:#666;border:3px solid ${hex};display:flex;align-items:center;justify-content:center;font-size:${emojiSize}px;border-radius:6px;box-shadow:${isSelected ? '0 0 0 3px #00B4D8, 0 2px 8px rgba(0,0,0,0.1)' : '0 2px 8px rgba(0,0,0,0.1)'};box-sizing:border-box;cursor:move;outline:${isSelected ? '2px dashed #00B4D8' : 'none'};outline-offset:3px;" onmousedown="startNodeDrag(event,'${node.id}')">
           ${getEmojiForType(displayType)}
         </div>
         <div class="map-node-del" style="position:absolute;top:-8px;right:-8px;width:18px;height:18px;background:#FF4444;color:white;border-radius:50%;cursor:pointer;z-index:40;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;line-height:1;box-shadow:0 1px 4px rgba(0,0,0,0.2);" onclick="removeNodeFromMap('${node.id}')" title="Remove from map">×</div>
@@ -505,8 +506,10 @@ function openCreateItemModal(){
 }
 
 function confirmCreateItem(){
+  // If no active map, try selecting the first one
+  if(!activeMapId && maps.length) activeMapId = maps[0].id;
   const map = getActiveMap();
-  if(!map) return;
+  if(!map) { alert('No map available. Create a map first.'); return; }
   
   const name = document.getElementById('modal-name').value.trim();
   if(!name) { alert('Please enter a name'); return; }
@@ -705,10 +708,9 @@ function selectNode(nodeId, addToSelection=false){
 }
 
 function highlightSelected(){
-  document.querySelectorAll('.map-node').forEach(el => {
-    const nid = el.id.replace('mn_','');
-    el.style.outline = _selectedNodeIds.has(nid) ? '2px dashed #00B4D8' : '';
-  });
+  // Re-render so selection state is embedded in the node HTML
+  const map = getActiveMap();
+  if(map) renderNodes(map);
 }
 
 function copySelectedNode(){
@@ -727,25 +729,31 @@ function copySelectedNode(){
 }
 
 function pasteCopiedNode(){
-  if(!copiedNodeId) return;
+  if(!_copiedNode) return; // check _copiedNode, not copiedNodeId (which is null for standalone)
   const map = getActiveMap();
   if(!map) return;
   
-  // Find the last node with this itemId to offset from it
-  const existingNodes = map.nodes.filter(n => n.itemId === copiedNodeId);
-  const lastNode = existingNodes[existingNodes.length - 1];
-  const x = lastNode ? lastNode.x + 80 : 100;
-  const y = lastNode ? lastNode.y + 80 : 100;
+  // Offset from the copied node's position
+  const x = (_copiedNode.x || 100) + 80;
+  const y = (_copiedNode.y || 100) + 80;
   
-  map.nodes.push({ id: 'n_' + Date.now(), itemId: _copiedNode.itemId||null,
-    name: _copiedNode.name, type: _copiedNode.type, color: _copiedNode.color,
-    label: _copiedNode.label, size: _copiedNode.size, x, y });
+  pushUndo();
+  const newId = 'n_' + Date.now();
+  map.nodes.push({
+    id: newId,
+    itemId: _copiedNode.itemId || null,
+    name: _copiedNode.name,
+    type: _copiedNode.type,
+    color: _copiedNode.color,
+    label: _copiedNode.label,
+    size: _copiedNode.size,
+    x, y
+  });
   saveMaps();
   renderMapCanvas();
   
   // Auto-select the new node
-  const newNode = map.nodes[map.nodes.length - 1];
-  setTimeout(() => selectNode(newNode.id), 50);
+  setTimeout(() => selectNode(newId), 50);
 }
 
 // Keyboard shortcuts: Ctrl+C to copy, Ctrl+V to paste, Delete/Backspace to remove selected
@@ -783,12 +791,17 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// Clear selection when clicking canvas background
+// Clear selection when clicking canvas background (not on a node)
 document.addEventListener('click', (e) => {
-  if(!e.target.closest('.map-node')){
-    _selectedNodeId = null;
-    _selectedNodeIds.clear();
-    document.querySelectorAll('.map-node').forEach(el => el.style.outline = '');
+  const wrap = e.target.closest('.map-canvas-wrap');
+  if(!wrap) return; // only care about clicks inside canvas
+  const map = getActiveMap();
+  if(map && !isPointOverNode(e.clientX, e.clientY, wrap, map) && !e.target.closest('.map-toolbar')){
+    if(_selectedNodeIds.size > 0){
+      _selectedNodeId = null;
+      _selectedNodeIds.clear();
+      renderNodes(map);
+    }
   }
 });
 
@@ -857,8 +870,8 @@ function installMarquee(){
         const selW = Math.abs(curX - _marqueeStartX);
         const selH = Math.abs(curY - _marqueeStartY);
 
-        // Only select if actually dragged (not just a click)
-        if(selW > 8 && selH > 8){
+        // Only select if actually dragged a meaningful distance (lowered threshold)
+        if(selW > 4 || selH > 4){
           _selectedNodeIds.clear();
           _selectedNodeId = null;
           const map = getActiveMap();
