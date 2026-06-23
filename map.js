@@ -502,9 +502,14 @@ function confirmCreateItem(){
     };
     sbFetch('skills', {
       method: 'POST',
-      headers: {'Prefer': 'return=minimal'},
+      headers: {'Prefer': 'return=representation'},
       body: JSON.stringify(row)
-    }).catch(e => console.warn('Could not save to Supabase:', e));
+    }).then(async r => {
+      const text = await r.text();
+      console.log('[CREATE] Supabase POST status:', r.status, text);
+      if(!r.ok) console.error('[CREATE] FAILED to save to Supabase:', text);
+      else console.log('[CREATE] Successfully saved to Supabase!');
+    }).catch(e => console.error('[CREATE] Supabase error:', e));
   }
   
   // Add to map
