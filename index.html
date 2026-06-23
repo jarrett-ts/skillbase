@@ -34,11 +34,19 @@
 
       <!-- Maps section -->
       <div class="maps-section">
-        <div class="maps-section-header">
+        <div class="maps-section-header" onclick="toggleMapsSection()" style="cursor:pointer;user-select:none;">
           <span class="maps-section-title">Maps</span>
-          <button class="map-new-btn" onclick="newMap()"><i class="ti ti-plus" style="font-size:11px"></i> New</button>
+          <div style="display:flex;align-items:center;gap:4px;">
+            <button class="map-new-btn" onclick="event.stopPropagation();newMap()" title="New map"><i class="ti ti-plus" style="font-size:11px"></i> New</button>
+            <i class="ti ti-chevron-up" id="maps-chevron" style="font-size:12px;color:var(--text-muted);transition:transform .2s;"></i>
+          </div>
         </div>
-        <div class="map-list" id="map-list"></div>
+        <div id="maps-body">
+          <div class="map-list" id="map-list"></div>
+          <div style="padding:2px 0 4px;">
+            <button class="add-folder-btn" onclick="addMapFolder()" style="font-size:11px;"><i class="ti ti-folder-plus" style="font-size:12px"></i> New map folder</button>
+          </div>
+        </div>
       </div>
 
       <div style="padding:4px 10px 0;">
