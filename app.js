@@ -3,6 +3,7 @@ const SB_URL = 'https://zjruwkdmvpgfpyxpnffj.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpqcnV3a2RtdnBnZnB5eHBuZmZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4MDg5NjksImV4cCI6MjA5NzM4NDk2OX0.jlQkFpYtkh497qFWkG03tJZGQ-5R_bWx4QxwRUNEO1E';
 const VERSIONS_URL = `${SB_URL}/functions/v1/skill-versions`;
 const TESTS_URL = `${SB_URL}/functions/v1/skill-tests`;
+const SYNC_URL = `${SB_URL}/functions/v1/skill-sync`;
 
 async function sbFetch(path, opts={}) {
   const r = await fetch(SB_URL+'/rest/v1/'+path, {
@@ -3413,6 +3414,13 @@ async function saveP(){
         updated_at:new Date(item.updatedAt||Date.now()).toISOString()};
       const r=await sbFetch('skills?id=eq.'+item.id,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify(row)});
       if(r.status===404||r.status===204&&false) await sbFetch('skills',{method:'POST',body:JSON.stringify(row)});
+      // Sync to GitHub so Claude picks up the latest version
+      try{
+        await fetch(SYNC_URL,{method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json'},
+          body:JSON.stringify({skill_id:item.id,name:item.name,description:item.description||'',
+            icon:item.icon||'ti-puzzle',color:item.color||'gray',prompt:item.prompt||'',
+            related_server_ids:item.connectedSkills||[]})});
+      }catch(e){console.warn('GitHub sync:',e.message);}
     }
   }catch(e){console.warn('Supabase save:',e.message);}
 }
@@ -3675,7 +3683,7 @@ const versionCollapsed = window.versionCollapsed !== false;
           '<span style="font-size:11px;font-weight:600;color:var(--text-secondary);">Current version</span>'+
           '<span style="font-size:13px;font-weight:700;" id="current-version-tag">...</span>'+
         '</div>'+
-        '<button onclick="handlePublishVersion\''+item.id+'\'" style="padding:6px 14px;background:var(--ts-navy);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;"><i class="ti ti-plus" style="font-size:12px;"></i> Publish new version</button>'+
+        '<button onclick="handlePublishVersion\''+item.id+'\')" style="padding:6px 14px;background:var(--ts-navy);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;"><i class="ti ti-plus" style="font-size:12px;"></i> Publish new version</button>'+
         '<div id="version-history-list" style="display:flex;flex-direction:column;gap:6px;"></div>'+
       '</div>'
     );
