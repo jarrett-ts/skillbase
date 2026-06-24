@@ -3534,7 +3534,35 @@ function renderMain(){
     </div>`:'';
 
 
-  const drawer=`
+  const versions = await getSkillVersions(currentSkillId);
+const latestVersion = versions.versions?.[0]?.version_tag ?? 'No versions yet';
+
+const versionPanel=`
+  <div class="section-header" onclick="this.nextElementSibling.classList.toggle('collapsed');this.nextElementSibling.classList.toggle('expanded');this.querySelector('.section-chevron').classList.toggle('open')">
+    <div class="section-title"><i class="ti ti-history" style="font-size:12px"></i> Version</div>
+    <i class="ti ti-chevron-up section-chevron"></i>
+  </div>
+  <div class="section-body collapsed">
+    <div class="drawer-body">
+      <div class="drawer-section">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <span style="font-size:13px;color:var(--text-secondary)">Current version</span>
+          <span style="font-size:14px;font-weight:500">${latestVersion}</span>
+        </div>
+        <button onclick="handlePublishVersion('${currentSkillId}')" style="width:100%;padding:8px;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;margin-bottom:12px">
+          + Publish new version
+        </button>
+        ${versions.versions?.length > 1 ? versions.versions.slice(1).map(v=>`
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--border)">
+            <span style="font-size:12px;font-weight:500;min-width:36px">${v.version_tag}</span>
+            <span style="font-size:12px;color:var(--text-secondary);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.message??''}</span>
+            <button onclick="handleRollback('${currentSkillId}','${v.version_tag}')" style="font-size:11px;padding:2px 8px;border:1px solid var(--border);border-radius:4px;background:none;cursor:pointer;white-space:nowrap">Rollback</button>
+          </div>`).join('') : '<p style="font-size:12px;color:var(--text-secondary)">No previous versions yet</p>'}
+      </div>
+    </div>
+  </div>
+`;
+const drawer=`
     <div class="section-header" onclick="toggleDrawer()">
       <div class="section-title"><i class="ti ti-tools" style="font-size:12px"></i> Test · Notes</div>
       <i class="ti ti-chevron-up section-chevron ${drawerOpen?'open':''}" id="drawer-chevron"></i>
@@ -3663,7 +3691,23 @@ function renderMain(){
       '</div>'+
     '</div>';
 
-  const testNotesHtml =
+  const versionPanel =
+  '<div onclick="toggleVersionSection()" style="padding:9px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:700;color:#2a5570;background:#D0D0ED;text-transform:uppercase;letter-spacing:.08em;">'+
+    '<span><i class="ti ti-history" style="font-size:12px;"></i> Version</span>'+
+    '<i class="ti ti-chevron-'+(window.versionCollapsed!==false?'up':'down')+'" style="font-size:14px;"></i>'+
+  '</div>'+
+  (window.versionCollapsed!==false ? '' :
+    '<div style="padding:12px 14px;display:flex;flex-direction:column;gap:10px;">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;">'+
+        '<span style="font-size:11px;font-weight:600;color:var(--text-secondary);">Current version</span>'+
+        '<span style="font-size:13px;font-weight:700;" id="current-version-tag">Loading…</span>'+
+      '</div>'+
+      '<button onclick="handlePublishVersion(\''+item.id+'\')" style="padding:6px 14px;background:var(--ts-navy);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;"><i class="ti ti-plus" style="font-size:12px;"></i> Publish new version</button>'+
+      '<div id="version-history-list" style="display:flex;flex-direction:column;gap:6px;max-height:150px;overflow-y:auto;"></div>'+
+    '</div>'
+  );
+
+const testNotesHtml =
     '<div style="border-top:1.5px solid var(--border-mid);background:var(--bg-panel);flex-shrink:0;display:flex;flex-direction:column;">'+tnHeader+tnFields+'</div>';
 
   document.getElementById('content-area').innerHTML =
@@ -4176,4 +4220,40 @@ async function getSkillTestHistory(skillId) {
     headers: { 'apikey': SB_ANON_KEY }
   });
   return res.json();
+}
+function toggleVersionSection(){
+  window.versionCollapsed = window.versionCollapsed===false ? true : false;
+  renderMain();
+  if(window.versionCollapsed===false) loadVersionHistory();
+}
+
+async function loadVersionHistory(){
+  const item = getSelected();
+  if(!item) return;
+  const data = await getSkillVersions(item.id);
+  const tag = document.getElementById('current-version-tag');
+  const list = document.getElementById('version-history-list');
+  if(tag) tag.textContent = data.versions?.[0]?.version_tag ?? 'No versions yet';
+  if(list) list.innerHTML = (data.versions||[]).slice(1).map(v=>
+    '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--border-mid);">'+
+      '<span style="font-size:12px;font-weight:600;min-width:36px;">'+v.version_tag+'</span>'+
+      '<span style="font-size:11px;color:var(--text-secondary);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(v.message||'')+'</span>'+
+      '<button onclick="handleRollback(\''+item.id+'\',\''+v.version_tag+'\')" style="font-size:11px;padding:2px 8px;border:1px solid var(--border-mid);border-radius:4px;background:none;cursor:pointer;">Rollback</button>'+
+    '</div>'
+  ).join('');
+}
+
+async function handlePublishVersion(skillId){
+  const message = prompt('What changed in this version?');
+  if(!message) return;
+  const result = await publishSkillVersion(skillId, message);
+  if(result.success){ alert('✅ '+result.version+' published!'); loadVersionHistory(); }
+  else alert('❌ Error: '+result.error);
+}
+
+async function handleRollback(skillId, versionTag){
+  if(!confirm('Roll back to '+versionTag+'? This will overwrite the current version.')) return;
+  const result = await rollbackSkillVersion(skillId, versionTag);
+  if(result.success){ alert('✅ Rolled back to '+versionTag); loadVersionHistory(); }
+  else alert('❌ '+result.error);
 }
