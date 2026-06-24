@@ -1,6 +1,8 @@
 const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages';
 const SB_URL = 'https://zjruwkdmvpgfpyxpnffj.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpqcnV3a2RtdnBnZnB5eHBuZmZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4MDg5NjksImV4cCI6MjA5NzM4NDk2OX0.jlQkFpYtkh497qFWkG03tJZGQ-5R_bWx4QxwRUNEO1E';
+const VERSIONS_URL = `${SB_URL}/functions/v1/skill-versions`;
+const TESTS_URL = `${SB_URL}/functions/v1/skill-tests`;
 
 async function sbFetch(path, opts={}) {
   const r = await fetch(SB_URL+'/rest/v1/'+path, {
@@ -4141,4 +4143,37 @@ function toggleTestNotesCollapse(){
     testBody.style.display = 'none';
     chevron.classList.add('collapsed');
   }
+}
+async function getSkillVersions(skillId) {
+  const res = await fetch(`${VERSIONS_URL}/${skillId}`, {
+    headers: { 'apikey': SB_ANON_KEY }
+  });
+  return res.json();
+}
+
+async function publishSkillVersion(skillId, message) {
+  const res = await fetch(`${VERSIONS_URL}/${skillId}`, {
+    method: 'POST',
+    headers: {
+      'apikey': SB_ANON_KEY,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ message })
+  });
+  return res.json();
+}
+
+async function rollbackSkillVersion(skillId, versionTag) {
+  const res = await fetch(`${VERSIONS_URL}/${skillId}/rollback/${versionTag}`, {
+    method: 'POST',
+    headers: { 'apikey': SB_ANON_KEY }
+  });
+  return res.json();
+}
+
+async function getSkillTestHistory(skillId) {
+  const res = await fetch(`${TESTS_URL}/${skillId}/history`, {
+    headers: { 'apikey': SB_ANON_KEY }
+  });
+  return res.json();
 }
