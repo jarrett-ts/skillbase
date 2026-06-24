@@ -86,6 +86,29 @@ function toggleSidebar(){sidebarOpen=!sidebarOpen;const sb=document.getElementBy
 function toggleMenu(){menuOpen=!menuOpen;const m=document.getElementById('action-menu');if(m)m.className='menu-dropdown '+(menuOpen?'open':'');if(menuOpen)setTimeout(()=>document.addEventListener('click',closeMenu,{once:true}),0);}
 function closeMenu(){menuOpen=false;const m=document.getElementById('action-menu');if(m)m.className='menu-dropdown';}
 
+function showSyncToast(status){
+  let toast=document.getElementById('sync-toast');
+  if(!toast){
+    toast=document.createElement('div');
+    toast.id='sync-toast';
+    toast.style.cssText='position:fixed;bottom:20px;right:20px;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:600;z-index:9999;transition:opacity .3s;pointer-events:none;';
+    document.body.appendChild(toast);
+  }
+  clearTimeout(window._syncToastTimer);
+  if(status==='syncing'){
+    toast.style.background='#E0D0F0';toast.style.color='#4A2080';
+    toast.style.opacity='1';toast.textContent='↑ Syncing to Claude…';
+  } else if(status==='ok'){
+    toast.style.background='#D0EDD8';toast.style.color='#0E6E5C';
+    toast.style.opacity='1';toast.textContent='✓ Synced to Claude';
+    window._syncToastTimer=setTimeout(()=>{toast.style.opacity='0';},2500);
+  } else if(status==='failed'){
+    toast.style.background='#FDECEA';toast.style.color='#C44A20';
+    toast.style.opacity='1';toast.textContent='⚠ Sync failed — check console';
+    window._syncToastTimer=setTimeout(()=>{toast.style.opacity='0';},4000);
+  }
+}
+
 function md(raw){
   const cleaned=raw.replace(/^#\s+[^\n]+\n?/,'').trimStart();
   const lines=cleaned.split('\n');let html='',inPre=false,inTable=false,inUL=false;
@@ -3405,8 +3428,12 @@ async function storage_set(key,val,shared=false){
 }
 async function saveP(changedId){
   try{await storage_set(PK,JSON.stringify(S.personal));}catch(e){}
+  // Only save the changed skill to Supabase, not all skills
+  const itemsToSave = changedId
+    ? S.personal.filter(i=>i.id===changedId)
+    : S.personal;
   try{
-    for(const item of S.personal){
+    for(const item of itemsToSave){
       const row={id:item.id,type:item.type,name:item.name,author:item.author||'Jarrett',
         color:item.color,icon:item.icon,description:item.description||'',
         prompt:item.prompt||'',notes:item.notes||'',archived:item.archived||false,
@@ -3416,18 +3443,21 @@ async function saveP(changedId){
       if(r.status===404||r.status===204&&false) await sbFetch('skills',{method:'POST',body:JSON.stringify(row)});
     }
   }catch(e){console.warn('Supabase save:',e.message);}
-  // Only sync the skill that actually changed
+  // Only sync to GitHub when prompt content actually changed (not renames/color/icon)
   const target=S.personal.find(i=>i.id===(changedId||S.selected));
-  if(target){
+  const _lastSyncedPrompts = window._lastSyncedPrompts = window._lastSyncedPrompts || {};
+  if(target && target.prompt && target.prompt !== _lastSyncedPrompts[target.id]){
+    _lastSyncedPrompts[target.id] = target.prompt;
+    showSyncToast('syncing');
     try{
       const _syncRes=await fetch(SYNC_URL,{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'},
         body:JSON.stringify({skill_id:target.id,name:target.name,description:target.description||'',
           icon:target.icon||'ti-puzzle',color:target.color||'gray',prompt:target.prompt||'',
           related_server_ids:target.connectedSkills||[]})});
       const _syncData=await _syncRes.json();
-      if(!_syncRes.ok){console.warn('GitHub sync failed:',target.id,_syncData);}
-      else{console.log('GitHub sync ok:',target.id,_syncData.commit);}
-    }catch(e){console.warn('GitHub sync error:',e.message);}
+      if(!_syncRes.ok){console.warn('GitHub sync failed:',target.id,_syncData);showSyncToast('failed');}
+      else{console.log('GitHub sync ok:',target.id,_syncData.commit);showSyncToast('ok');}
+    }catch(e){console.warn('GitHub sync error:',e.message);showSyncToast('failed');}
   }
 }
 async function saveSh(){await storage_set(SK,JSON.stringify(S.shared),true);}
