@@ -3691,22 +3691,6 @@ const drawer=`
       '</div>'+
     '</div>';
 
-  const versionPanel =
-  '<div onclick="toggleVersionSection()" style="padding:9px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:700;color:#2a5570;background:#D0D0ED;text-transform:uppercase;letter-spacing:.08em;">'+
-    '<span><i class="ti ti-history" style="font-size:12px;"></i> Version</span>'+
-    '<i class="ti ti-chevron-'+(window.versionCollapsed!==false?'up':'down')+'" style="font-size:14px;"></i>'+
-  '</div>'+
-  (window.versionCollapsed!==false ? '' :
-    '<div style="padding:12px 14px;display:flex;flex-direction:column;gap:10px;">'+
-      '<div style="display:flex;align-items:center;justify-content:space-between;">'+
-        '<span style="font-size:11px;font-weight:600;color:var(--text-secondary);">Current version</span>'+
-        '<span style="font-size:13px;font-weight:700;" id="current-version-tag">Loading…</span>'+
-      '</div>'+
-      '<button onclick="handlePublishVersion(\''+item.id+'\')" style="padding:6px 14px;background:var(--ts-navy);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;"><i class="ti ti-plus" style="font-size:12px;"></i> Publish new version</button>'+
-      '<div id="version-history-list" style="display:flex;flex-direction:column;gap:6px;max-height:150px;overflow-y:auto;"></div>'+
-    '</div>'
-  );
-
 const testNotesHtml =
     '<div style="border-top:1.5px solid var(--border-mid);background:var(--bg-panel);flex-shrink:0;display:flex;flex-direction:column;">'+tnHeader+tnFields+'</div>';
 
