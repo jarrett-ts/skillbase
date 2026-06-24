@@ -1,0 +1,3 @@
+# Don't redeploy Vercel when only skill files change
+skills/
+supabase/
