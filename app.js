@@ -86,29 +86,6 @@ function toggleSidebar(){sidebarOpen=!sidebarOpen;const sb=document.getElementBy
 function toggleMenu(){menuOpen=!menuOpen;const m=document.getElementById('action-menu');if(m)m.className='menu-dropdown '+(menuOpen?'open':'');if(menuOpen)setTimeout(()=>document.addEventListener('click',closeMenu,{once:true}),0);}
 function closeMenu(){menuOpen=false;const m=document.getElementById('action-menu');if(m)m.className='menu-dropdown';}
 
-function showSyncToast(status){
-  let toast=document.getElementById('sync-toast');
-  if(!toast){
-    toast=document.createElement('div');
-    toast.id='sync-toast';
-    toast.style.cssText='position:fixed;bottom:20px;right:20px;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:600;z-index:9999;transition:opacity .3s;pointer-events:none;';
-    document.body.appendChild(toast);
-  }
-  clearTimeout(window._syncToastTimer);
-  if(status==='syncing'){
-    toast.style.background='#E0D0F0';toast.style.color='#4A2080';
-    toast.style.opacity='1';toast.textContent='↑ Syncing to Claude…';
-  } else if(status==='ok'){
-    toast.style.background='#D0EDD8';toast.style.color='#0E6E5C';
-    toast.style.opacity='1';toast.textContent='✓ Synced to Claude';
-    window._syncToastTimer=setTimeout(()=>{toast.style.opacity='0';},2500);
-  } else if(status==='failed'){
-    toast.style.background='#FDECEA';toast.style.color='#C44A20';
-    toast.style.opacity='1';toast.textContent='⚠ Sync failed — check console';
-    window._syncToastTimer=setTimeout(()=>{toast.style.opacity='0';},4000);
-  }
-}
-
 function md(raw){
   const cleaned=raw.replace(/^#\s+[^\n]+\n?/,'').trimStart();
   const lines=cleaned.split('\n');let html='',inPre=false,inTable=false,inUL=false;
@@ -3426,14 +3403,10 @@ async function storage_get(key,shared=false){
 async function storage_set(key,val,shared=false){
   try{localStorage.setItem(key,val);}catch(e){}
 }
-async function saveP(changedId){
+async function saveP(){
   try{await storage_set(PK,JSON.stringify(S.personal));}catch(e){}
-  // Only save the changed skill to Supabase, not all skills
-  const itemsToSave = changedId
-    ? S.personal.filter(i=>i.id===changedId)
-    : S.personal;
   try{
-    for(const item of itemsToSave){
+    for(const item of S.personal){
       const row={id:item.id,type:item.type,name:item.name,author:item.author||'Jarrett',
         color:item.color,icon:item.icon,description:item.description||'',
         prompt:item.prompt||'',notes:item.notes||'',archived:item.archived||false,
@@ -3441,24 +3414,15 @@ async function saveP(changedId){
         updated_at:new Date(item.updatedAt||Date.now()).toISOString()};
       const r=await sbFetch('skills?id=eq.'+item.id,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify(row)});
       if(r.status===404||r.status===204&&false) await sbFetch('skills',{method:'POST',body:JSON.stringify(row)});
+      // Sync to GitHub so Claude picks up the latest version
+      try{
+        await fetch(SYNC_URL,{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'},
+          body:JSON.stringify({skill_id:item.id,name:item.name,description:item.description||'',
+            icon:item.icon||'ti-puzzle',color:item.color||'gray',prompt:item.prompt||'',
+            related_server_ids:item.connectedSkills||[]})});
+      }catch(e){console.warn('GitHub sync:',e.message);}
     }
   }catch(e){console.warn('Supabase save:',e.message);}
-  // Only sync to GitHub when prompt content actually changed (not renames/color/icon)
-  const target=S.personal.find(i=>i.id===(changedId||S.selected));
-  const _lastSyncedPrompts = window._lastSyncedPrompts = window._lastSyncedPrompts || {};
-  if(target && target.prompt && target.prompt !== _lastSyncedPrompts[target.id]){
-    _lastSyncedPrompts[target.id] = target.prompt;
-    showSyncToast('syncing');
-    try{
-      const _syncRes=await fetch(SYNC_URL,{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'},
-        body:JSON.stringify({skill_id:target.id,name:target.name,description:target.description||'',
-          icon:target.icon||'ti-puzzle',color:target.color||'gray',prompt:target.prompt||'',
-          related_server_ids:target.connectedSkills||[]})});
-      const _syncData=await _syncRes.json();
-      if(!_syncRes.ok){console.warn('GitHub sync failed:',target.id,_syncData);showSyncToast('failed');}
-      else{console.log('GitHub sync ok:',target.id,_syncData.commit);showSyncToast('ok');}
-    }catch(e){console.warn('GitHub sync error:',e.message);showSyncToast('failed');}
-  }
 }
 async function saveSh(){await storage_set(SK,JSON.stringify(S.shared),true);}
 
@@ -3549,6 +3513,171 @@ function toggleKBSection(){
 
 
 
+
+function buildRunTab(item) {
+  if(!item) return '<div style="padding:24px;color:var(--text-secondary);font-size:13px;">Select a skill or agent to run it.</div>';
+  const hex = colorHex(item.color||'gray');
+  const isAgent = item.type === 'agent';
+  const schema = getSkillUISchema(item);
+  const inputs = (schema && schema.inputs) ? schema.inputs : [];
+  const outputs = (schema && schema.outputs) ? schema.outputs : [];
+  const runHistory = (window._runHistory || {})[item.id] || [];
+
+  let inputsHtml = '';
+  if(inputs.length) {
+    inputsHtml = inputs.map(function(inp) {
+      const req = inp.required ? '<span style="color:#C44A20">*</span>' : '';
+      return '<div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px;">'+
+        '<label style="font-size:11px;font-weight:600;color:var(--text-secondary);">'+esc(inp.label||inp.id)+req+'</label>'+
+        '<div style="display:flex;gap:8px;align-items:center;">'+
+          '<input id="run-input-'+esc(inp.id)+'" type="text" placeholder="'+esc(inp.placeholder||'Paste link or value...')+'" '+
+            'style="flex:1;padding:8px 10px;border:1.5px solid var(--border-mid);border-radius:8px;font-size:12px;background:#fff;color:var(--text-primary);" />'+
+          (inp.type==='drive_link' ? '<label style="display:flex;align-items:center;gap:5px;padding:7px 10px;border:1.5px dashed var(--border-mid);border-radius:8px;font-size:11px;color:var(--text-secondary);cursor:pointer;white-space:nowrap;"><i class="ti ti-upload" style="font-size:13px"></i> Upload</label>' : '')+
+        '</div>'+
+      '</div>';
+    }).join('');
+  } else {
+    inputsHtml = '<div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px;">'+
+      '<label style="font-size:11px;font-weight:600;color:var(--text-secondary);">Input</label>'+
+      '<textarea id="run-input-default" placeholder="Describe what you want, or paste a link..." '+
+        'style="padding:8px 10px;border:1.5px solid var(--border-mid);border-radius:8px;font-size:12px;resize:vertical;min-height:64px;background:#fff;color:var(--text-primary);font-family:inherit;"></textarea>'+
+    '</div>';
+  }
+
+  let outputsHtml = '';
+  if(outputs.length) {
+    if(!window._runOutputSel) window._runOutputSel = {};
+    if(!window._runOutputSel[item.id]) window._runOutputSel[item.id] = outputs.filter(function(o){return o.default;}).map(function(o){return o.id;});
+    const sel = window._runOutputSel[item.id];
+    outputsHtml = '<div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px;">'+
+      '<label style="font-size:11px;font-weight:600;color:var(--text-secondary);">Outputs</label>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">'+
+      outputs.map(function(o) {
+        const active = sel.indexOf(o.id) >= 0;
+        return '<div onclick="toggleRunOutput(\''+esc(item.id)+'\',\''+esc(o.id)+'\')" style="display:flex;align-items:flex-start;gap:9px;padding:9px 11px;border:'+(active?'1.5px solid #7F77DD':'0.5px solid var(--border-mid)')+';border-radius:8px;cursor:pointer;background:'+(active?'#EEEDFE':'var(--bg-panel)')+';transition:all .1s;">'+
+          '<i class="ti '+(o.icon||'ti-check')+'" style="font-size:15px;margin-top:1px;color:'+(active?'#4A2080':'var(--text-secondary)')+'"></i>'+
+          '<div><div style="font-size:12px;font-weight:500;color:'+(active?'#3C3489':'var(--text-primary)')+';">'+esc(o.label)+'</div>'+
+          (o.description?'<div style="font-size:11px;color:var(--text-secondary);">'+esc(o.description)+'</div>':'')+
+          '</div></div>';
+      }).join('')+
+      '</div></div>';
+  }
+
+  let historyHtml = '';
+  if(runHistory.length) {
+    historyHtml = '<div style="margin-top:4px;">'+
+      '<div style="font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;">Recent runs</div>'+
+      runHistory.slice(0,5).map(function(r) {
+        const statusColor = r.status==='done'?'#085041':r.status==='running'?'#4A2080':'#C44A20';
+        const statusBg = r.status==='done'?'#D0EDD8':r.status==='running'?'#E0D0F0':'#FDECEA';
+        return '<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:0.5px solid var(--border-mid);font-size:12px;">'+
+          '<span style="background:'+statusBg+';color:'+statusColor+';font-size:10px;font-weight:600;padding:2px 7px;border-radius:999px;">'+r.status+'</span>'+
+          '<span style="flex:1;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(r.label||'Run')+'</span>'+
+          '<span style="color:var(--text-tertiary);">'+esc(r.time||'')+'</span>'+
+          (r.url?'<a href="'+esc(r.url)+'" style="color:var(--text-tertiary);"><i class="ti ti-external-link" style="font-size:13px"></i></a>':'')+
+        '</div>';
+      }).join('')+
+    '</div>';
+  }
+
+  return '<div style="padding:16px;display:flex;flex-direction:column;gap:0;overflow-y:auto;height:100%;">'+
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:14px;border-bottom:0.5px solid var(--border-mid);">'+
+      '<div style="width:32px;height:32px;border-radius:8px;background:'+hex+'18;color:'+hex+';border:1px solid '+hex+'30;display:flex;align-items:center;justify-content:center;">'+
+        '<i class="ti '+(item.icon||'ti-puzzle')+'" style="font-size:14px"></i>'+
+      '</div>'+
+      '<div>'+
+        '<div style="font-size:14px;font-weight:600;color:var(--text-primary);">'+esc(item.name)+'</div>'+
+        '<div style="font-size:11px;color:var(--text-secondary);">'+(isAgent?'Agent':'Skill')+'</div>'+
+      '</div>'+
+    '</div>'+
+    inputsHtml+outputsHtml+
+    '<button onclick="runSkill(\''+esc(item.id)+'\')" style="width:100%;padding:10px;background:var(--ts-navy);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:16px;">'+
+      '<i class="ti ti-player-play" style="font-size:13px"></i> Run '+esc(item.name)+
+    '</button>'+
+    historyHtml+
+  '</div>';
+}
+
+function getSkillUISchema(item) {
+  if(item.ui) return item.ui;
+  if(!item.prompt) return null;
+  try {
+    const fmEnd = item.prompt.indexOf('\n---', 4);
+    if(fmEnd < 0) return null;
+    const fm = item.prompt.substring(4, fmEnd);
+    const uiIdx = fm.indexOf('ui:');
+    if(uiIdx < 0) return null;
+    const uiBlock = fm.substring(uiIdx);
+    return parseSkillUIBlock(uiBlock);
+  } catch(e) { return null; }
+}
+
+function parseSkillUIBlock(text) {
+  const result = {inputs:[], outputs:[]};
+  const lines = text.split('\n');
+  let section = null;
+  let currentObj = null;
+  for(let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+    if(!trimmed) continue;
+    const indent = line.search(/\S/);
+    if(indent === 2 && trimmed === 'inputs:') { section = 'inputs'; continue; }
+    if(indent === 2 && trimmed === 'outputs:') { section = 'outputs'; continue; }
+    if(indent === 2 && trimmed !== 'inputs:' && trimmed !== 'outputs:' && !trimmed.startsWith('-')) { section = null; continue; }
+    if(section && indent === 4 && trimmed.startsWith('- ')) {
+      currentObj = {};
+      result[section].push(currentObj);
+      const kv = trimmed.slice(2).match(/^(\w+):\s*(.*)/);
+      if(kv) currentObj[kv[1]] = kv[2]==='true'?true:kv[2]==='false'?false:kv[2];
+    } else if(section && indent >= 6 && currentObj) {
+      const kv = trimmed.match(/^(\w+):\s*(.*)/);
+      if(kv) currentObj[kv[1]] = kv[2]==='true'?true:kv[2]==='false'?false:kv[2];
+    }
+  }
+  return result;
+}
+
+function toggleRunOutput(skillId, outputId) {
+  if(!window._runOutputSel) window._runOutputSel = {};
+  if(!window._runOutputSel[skillId]) window._runOutputSel[skillId] = [];
+  const sel = window._runOutputSel[skillId];
+  const idx = sel.indexOf(outputId);
+  if(idx >= 0) sel.splice(idx,1); else sel.push(outputId);
+  renderMain();
+}
+
+async function runSkill(skillId) {
+  const item = getSelected();
+  if(!item) return;
+  const schema = getSkillUISchema(item);
+  const inputDefs = (schema && schema.inputs) ? schema.inputs : [];
+  const inputs = {};
+  if(inputDefs.length) {
+    inputDefs.forEach(function(inp) {
+      const el = document.getElementById('run-input-'+inp.id);
+      if(el) inputs[inp.id] = el.value.trim();
+    });
+  } else {
+    const el = document.getElementById('run-input-default');
+    if(el) inputs['input'] = el.value.trim();
+  }
+  const selectedOutputs = (window._runOutputSel||{})[skillId] || [];
+  if(!window._runHistory) window._runHistory = {};
+  if(!window._runHistory[skillId]) window._runHistory[skillId] = [];
+  const label = Object.values(inputs)[0] || 'Run';
+  const runEntry = {status:'running', label:label.slice(0,50), time:'Just now', url:null};
+  window._runHistory[skillId].unshift(runEntry);
+  renderMain();
+  const parts = ['I want to run the **'+item.name+'** skill.',''];
+  Object.entries(inputs).forEach(function(e) { if(e[1]) parts.push('- '+e[0]+': '+e[1]); });
+  if(selectedOutputs.length) { parts.push(''); parts.push('Outputs I want: '+selectedOutputs.join(', ')); }
+  const prompt = parts.join('\n').trim();
+  runEntry.status = 'done';
+  runEntry.time = 'Just now';
+  window.open('https://claude.ai/new?q='+encodeURIComponent(prompt), '_blank');
+  setTimeout(function(){renderMain();}, 100);
+}
 
 function switchViewMode(mode) {
   window.currentViewMode = mode;
@@ -3681,10 +3810,12 @@ const drawer=`
       '</div>'+
       '<button onclick="switchViewMode(\'map\')" style="'+tabStyle(viewMode==='map')+'"><i class="ti ti-map-2" style="font-size:13px;"></i> Map</button>'+
       '<button onclick="switchViewMode(\'skills\')" style="'+tabStyle(viewMode==='skills')+'"><i class="ti ti-books" style="font-size:13px;"></i> Skills</button>'+
+      '<button onclick="switchViewMode(\'run\')" style="'+tabStyle(viewMode==='run')+'"><i class="ti ti-player-play" style="font-size:13px;"></i> Run</button>'+
     '</div>';
 
   const mapBody = '<div id="map-canvas-wrap" class="map-canvas-wrap"></div>';
-  const bodyContent = (viewMode === 'map') ? mapBody : mainContent;
+  const runBody = buildRunTab(item);
+  const bodyContent = (viewMode === 'map') ? mapBody : (viewMode === 'run') ? runBody : mainContent;
 
   const tnHeader =
     '<div onclick="toggleTestNotesSection()" style="padding:9px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:700;color:#2a5570;background:#D0EDD8;text-transform:uppercase;letter-spacing:.08em;">'+
