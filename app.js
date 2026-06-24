@@ -3675,7 +3675,7 @@ const versionCollapsed = window.versionCollapsed !== false;
           '<span style="font-size:11px;font-weight:600;color:var(--text-secondary);">Current version</span>'+
           '<span style="font-size:13px;font-weight:700;" id="current-version-tag">...</span>'+
         '</div>'+
-        '<button onclick="handlePublishVersion(''+item.id+'')" style="padding:6px 14px;background:var(--ts-navy);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;"><i class="ti ti-plus" style="font-size:12px;"></i> Publish new version</button>'+
+        '<button onclick="handlePublishVersion\''+item.id+'\'" style="padding:6px 14px;background:var(--ts-navy);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;"><i class="ti ti-plus" style="font-size:12px;"></i> Publish new version</button>'+
         '<div id="version-history-list" style="display:flex;flex-direction:column;gap:6px;"></div>'+
       '</div>'
     );
