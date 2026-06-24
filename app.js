@@ -3534,34 +3534,6 @@ function renderMain(){
     </div>`:'';
 
 
-  const versions = await getSkillVersions(currentSkillId);
-const latestVersion = versions.versions?.[0]?.version_tag ?? 'No versions yet';
-
-const versionPanel=`
-  <div class="section-header" onclick="this.nextElementSibling.classList.toggle('collapsed');this.nextElementSibling.classList.toggle('expanded');this.querySelector('.section-chevron').classList.toggle('open')">
-    <div class="section-title"><i class="ti ti-history" style="font-size:12px"></i> Version</div>
-    <i class="ti ti-chevron-up section-chevron"></i>
-  </div>
-  <div class="section-body collapsed">
-    <div class="drawer-body">
-      <div class="drawer-section">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <span style="font-size:13px;color:var(--text-secondary)">Current version</span>
-          <span style="font-size:14px;font-weight:500">${latestVersion}</span>
-        </div>
-        <button onclick="handlePublishVersion('${currentSkillId}')" style="width:100%;padding:8px;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;margin-bottom:12px">
-          + Publish new version
-        </button>
-        ${versions.versions?.length > 1 ? versions.versions.slice(1).map(v=>`
-          <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--border)">
-            <span style="font-size:12px;font-weight:500;min-width:36px">${v.version_tag}</span>
-            <span style="font-size:12px;color:var(--text-secondary);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.message??''}</span>
-            <button onclick="handleRollback('${currentSkillId}','${v.version_tag}')" style="font-size:11px;padding:2px 8px;border:1px solid var(--border);border-radius:4px;background:none;cursor:pointer;white-space:nowrap">Rollback</button>
-          </div>`).join('') : '<p style="font-size:12px;color:var(--text-secondary)">No previous versions yet</p>'}
-      </div>
-    </div>
-  </div>
-`;
 const drawer=`
     <div class="section-header" onclick="toggleDrawer()">
       <div class="section-title"><i class="ti ti-tools" style="font-size:12px"></i> Test · Notes</div>
@@ -3691,8 +3663,25 @@ const drawer=`
       '</div>'+
     '</div>';
 
-const testNotesHtml =
-    '<div style="border-top:1.5px solid var(--border-mid);background:var(--bg-panel);flex-shrink:0;display:flex;flex-direction:column;">'+tnHeader+tnFields+'</div>';
+const versionCollapsed = window.versionCollapsed !== false;
+  const versionPanel =
+    '<div onclick="toggleVersionSection()" style="padding:9px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:700;color:#2a5570;background:#D0D0ED;text-transform:uppercase;letter-spacing:.08em;">'+
+      '<span><i class="ti ti-history" style="font-size:12px;margin-right:5px;"></i>Version</span>'+
+      '<i class="ti ti-chevron-'+(versionCollapsed?'up':'down')+'" style="font-size:14px;"></i>'+
+    '</div>'+
+    (versionCollapsed ? '' :
+      '<div style="padding:12px 14px;display:flex;flex-direction:column;gap:10px;">'+
+        '<div style="display:flex;align-items:center;justify-content:space-between;">'+
+          '<span style="font-size:11px;font-weight:600;color:var(--text-secondary);">Current version</span>'+
+          '<span style="font-size:13px;font-weight:700;" id="current-version-tag">...</span>'+
+        '</div>'+
+        '<button onclick="handlePublishVersion(''+item.id+'')" style="padding:6px 14px;background:var(--ts-navy);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;"><i class="ti ti-plus" style="font-size:12px;"></i> Publish new version</button>'+
+        '<div id="version-history-list" style="display:flex;flex-direction:column;gap:6px;"></div>'+
+      '</div>'
+    );
+
+  const testNotesHtml =
+    '<div style="border-top:1.5px solid var(--border-mid);background:var(--bg-panel);flex-shrink:0;display:flex;flex-direction:column;">'+versionPanel+tnHeader+tnFields+'</div>';
 
   document.getElementById('content-area').innerHTML =
     '<div class="content-col" style="position:relative;">'+
@@ -4174,7 +4163,7 @@ function toggleTestNotesCollapse(){
 }
 async function getSkillVersions(skillId) {
   const res = await fetch(`${VERSIONS_URL}/${skillId}`, {
-    headers: { 'apikey': SB_ANON_KEY }
+    headers: { 'apikey': SB_KEY }
   });
   return res.json();
 }
@@ -4183,7 +4172,7 @@ async function publishSkillVersion(skillId, message) {
   const res = await fetch(`${VERSIONS_URL}/${skillId}`, {
     method: 'POST',
     headers: {
-      'apikey': SB_ANON_KEY,
+      'apikey': SB_KEY,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({ message })
@@ -4194,14 +4183,14 @@ async function publishSkillVersion(skillId, message) {
 async function rollbackSkillVersion(skillId, versionTag) {
   const res = await fetch(`${VERSIONS_URL}/${skillId}/rollback/${versionTag}`, {
     method: 'POST',
-    headers: { 'apikey': SB_ANON_KEY }
+    headers: { 'apikey': SB_KEY }
   });
   return res.json();
 }
 
 async function getSkillTestHistory(skillId) {
   const res = await fetch(`${TESTS_URL}/${skillId}/history`, {
-    headers: { 'apikey': SB_ANON_KEY }
+    headers: { 'apikey': SB_KEY }
   });
   return res.json();
 }
