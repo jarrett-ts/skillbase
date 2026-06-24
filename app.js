@@ -3416,11 +3416,14 @@ async function saveP(){
       if(r.status===404||r.status===204&&false) await sbFetch('skills',{method:'POST',body:JSON.stringify(row)});
       // Sync to GitHub so Claude picks up the latest version
       try{
-        await fetch(SYNC_URL,{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'},
+        const _syncRes=await fetch(SYNC_URL,{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'},
           body:JSON.stringify({skill_id:item.id,name:item.name,description:item.description||'',
             icon:item.icon||'ti-puzzle',color:item.color||'gray',prompt:item.prompt||'',
             related_server_ids:item.connectedSkills||[]})});
-      }catch(e){console.warn('GitHub sync:',e.message);}
+        const _syncData=await _syncRes.json();
+        if(!_syncRes.ok){console.warn('GitHub sync failed:',item.id,_syncData);}
+        else{console.log('GitHub sync ok:',item.id,_syncData.commit);}
+      }catch(e){console.warn('GitHub sync error:',e.message);}
     }
   }catch(e){console.warn('Supabase save:',e.message);}
 }
