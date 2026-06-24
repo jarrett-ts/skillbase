@@ -3403,7 +3403,7 @@ async function storage_get(key,shared=false){
 async function storage_set(key,val,shared=false){
   try{localStorage.setItem(key,val);}catch(e){}
 }
-async function saveP(){
+async function saveP(changedId){
   try{await storage_set(PK,JSON.stringify(S.personal));}catch(e){}
   try{
     for(const item of S.personal){
@@ -3414,18 +3414,21 @@ async function saveP(){
         updated_at:new Date(item.updatedAt||Date.now()).toISOString()};
       const r=await sbFetch('skills?id=eq.'+item.id,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify(row)});
       if(r.status===404||r.status===204&&false) await sbFetch('skills',{method:'POST',body:JSON.stringify(row)});
-      // Sync to GitHub so Claude picks up the latest version
-      try{
-        const _syncRes=await fetch(SYNC_URL,{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'},
-          body:JSON.stringify({skill_id:item.id,name:item.name,description:item.description||'',
-            icon:item.icon||'ti-puzzle',color:item.color||'gray',prompt:item.prompt||'',
-            related_server_ids:item.connectedSkills||[]})});
-        const _syncData=await _syncRes.json();
-        if(!_syncRes.ok){console.warn('GitHub sync failed:',item.id,_syncData);}
-        else{console.log('GitHub sync ok:',item.id,_syncData.commit);}
-      }catch(e){console.warn('GitHub sync error:',e.message);}
     }
   }catch(e){console.warn('Supabase save:',e.message);}
+  // Only sync the skill that actually changed
+  const target=S.personal.find(i=>i.id===(changedId||S.selected));
+  if(target){
+    try{
+      const _syncRes=await fetch(SYNC_URL,{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'},
+        body:JSON.stringify({skill_id:target.id,name:target.name,description:target.description||'',
+          icon:target.icon||'ti-puzzle',color:target.color||'gray',prompt:target.prompt||'',
+          related_server_ids:target.connectedSkills||[]})});
+      const _syncData=await _syncRes.json();
+      if(!_syncRes.ok){console.warn('GitHub sync failed:',target.id,_syncData);}
+      else{console.log('GitHub sync ok:',target.id,_syncData.commit);}
+    }catch(e){console.warn('GitHub sync error:',e.message);}
+  }
 }
 async function saveSh(){await storage_set(SK,JSON.stringify(S.shared),true);}
 
